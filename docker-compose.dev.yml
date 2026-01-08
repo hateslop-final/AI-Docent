@@ -1,0 +1,12 @@
+services:
+  backend:
+    build: ./backend
+    container_name: ai-docent-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/app/.env.local
+    volumes:
+      - ./backend:/backend
+    working_dir: /backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload

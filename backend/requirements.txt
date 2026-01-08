@@ -1,0 +1,21 @@
+# FastAPI 및 서버
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+python-multipart==0.0.12
+
+# 데이터베이스
+supabase==2.10.0
+
+# 데이터 검증 및 설정
+pydantic==2.9.2
+pydantic-settings==2.5.2
+
+# 이미지 처리
+pillow==11.0.0
+
+# 수치 연산
+numpy==2.1.1
+
+# 머신러닝 (이미지 임베딩)
+torch>=2.0.0
+open-clip-torch>=2.24.0
