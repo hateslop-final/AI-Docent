@@ -1,8 +1,8 @@
-import { View, Text, Image, ScrollView, Pressable } from "react-native";
+import { View, Text, Image, ScrollView, Pressable, Modal } from "react-native";
 import { DEFAULT_PROFILE_IMAGE_URL } from "@/services/storage";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useAuth } from "@/store/auth.store";
 import { useAuthState } from "@/store/auth.store";
@@ -13,11 +13,22 @@ const AGE_OPTIONS = [
   { label: "성인", value: "adult" },
 ] as const;
 
+const AESTHETIC_OPTIONS = [
+  { key: "light", title: "가볍게", desc: "편하게 감상하고 싶어요", icon: "light-mode" },
+  { key: "medium", title: "적당히", desc: "배경이 궁금해요", icon: "auto-awesome" },
+  { key: "deep", title: "깊이 있게", desc: "맥락까지 알고 싶어요", icon: "menu-book" },
+] as const;
+
 export default function MyPageScreen() {
   const router = useRouter();
   const { user, userProfile, signOut, initialize, initialized } = useAuth();
   const age = useOnboardingStore((s) => s.age);
   const aesthetic = useOnboardingStore((s) => s.aesthetic);
+  const setAge = useOnboardingStore((s) => s.setAge);
+  const setAesthetic = useOnboardingStore((s) => s.setAesthetic);
+  
+  const [showAgeModal, setShowAgeModal] = useState(false);
+  const [showAestheticModal, setShowAestheticModal] = useState(false);
   
   useEffect(() => {
     if (!initialized) {
@@ -38,6 +49,16 @@ export default function MyPageScreen() {
       default:
         return "선택 안 함";
     }
+  };
+
+  const handleAgeSelect = (value: string) => {
+    setAge(value);
+    setShowAgeModal(false);
+  };
+
+  const handleAestheticSelect = (key: string) => {
+    setAesthetic(key);
+    setShowAestheticModal(false);
   };
 
   return (
@@ -156,43 +177,70 @@ export default function MyPageScreen() {
                   <Text style={{ fontSize: 20, fontWeight: "700", color: "#1a1a1a", marginBottom: 4 }}>
                     게스트
                   </Text>
-                  <Text style={{ fontSize: 14, color: "#666" }}>
-                    로그인하여 더 많은 기능을 이용하세요
-                  </Text>
+                  <Pressable onPress={() => router.push("/mypage/login")}>
+                    <Text style={{ fontSize: 14, color: "#007AFF" }}>
+                      로그인하여 더 많은 기능을 이용하세요
+                    </Text>
+                  </Pressable>
                 </View>
               </View>
 
-              {(age || aesthetic) && (
-                <View style={{
-                  paddingTop: 16,
-                  borderTopWidth: 1,
-                  borderTopColor: "#f0f0f0",
-                }}>
-                  <Text style={{ fontSize: 14, fontWeight: "600", marginBottom: 12, color: "#1a1a1a" }}>
-                    선택한 정보
-                  </Text>
-                  
-                  {age && (
-                    <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
-                      <Text style={{ fontSize: 14, color: "#666", marginLeft: 8 }}>
-                        연령대: <Text style={{ fontWeight: "600", color: "#1a1a1a" }}>
-                          {AGE_OPTIONS.find(opt => opt.value === age)?.label || age}
-                        </Text>
+              <View style={{
+                paddingTop: 16,
+                borderTopWidth: 1,
+                borderTopColor: "#f0f0f0",
+              }}>
+                <Text style={{ fontSize: 14, fontWeight: "600", marginBottom: 12, color: "#1a1a1a" }}>
+                  맞춤 설정
+                </Text>
+                
+                <Pressable
+                  onPress={() => setShowAgeModal(true)}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    paddingVertical: 12,
+                    paddingHorizontal: 8,
+                    marginBottom: 8,
+                    borderRadius: 8,
+                    backgroundColor: "#f9f9f9",
+                  }}
+                >
+                  <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+                    <MaterialIcons name="person-outline" size={18} color="#666" style={{ marginRight: 8 }} />
+                    <Text style={{ fontSize: 14, color: "#666" }}>
+                      연령대: <Text style={{ fontWeight: "600", color: "#1a1a1a" }}>
+                        {age ? AGE_OPTIONS.find(opt => opt.value === age)?.label : "선택 안 함"}
                       </Text>
-                    </View>
-                  )}
-                  
-                  {aesthetic && (
-                    <View style={{ flexDirection: "row", alignItems: "center" }}>
-                      <Text style={{ fontSize: 14, color: "#666", marginLeft: 8 }}>
-                        설명 수준: <Text style={{ fontWeight: "600", color: "#1a1a1a" }}>
-                          {getAestheticText(aesthetic)}
-                        </Text>
+                    </Text>
+                  </View>
+                  <MaterialIcons name="chevron-right" size={20} color="#ccc" />
+                </Pressable>
+                
+                <Pressable
+                  onPress={() => setShowAestheticModal(true)}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    paddingVertical: 12,
+                    paddingHorizontal: 8,
+                    borderRadius: 8,
+                    backgroundColor: "#f9f9f9",
+                  }}
+                >
+                  <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+                    <MaterialIcons name="auto-awesome" size={18} color="#666" style={{ marginRight: 8 }} />
+                    <Text style={{ fontSize: 14, color: "#666" }}>
+                      설명 수준: <Text style={{ fontWeight: "600", color: "#1a1a1a" }}>
+                        {getAestheticText(aesthetic)}
                       </Text>
-                    </View>
-                  )}
-                </View>
-              )}
+                    </Text>
+                  </View>
+                  <MaterialIcons name="chevron-right" size={20} color="#ccc" />
+                </Pressable>
+              </View>
             </View>
           )}
         </View>
@@ -303,26 +351,39 @@ export default function MyPageScreen() {
             </>
           ) : (
             <>
-              {!age && !aesthetic && (
-                <View style={{
-                  padding: 16,
-                  backgroundColor: "#FFF9E6",
+              {/* 앱 기능 안내 섹션 */}
+              <Pressable
+                onPress={() => router.push("/mypage/features")}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  padding: 18,
+                  backgroundColor: "#fff",
                   borderRadius: 12,
-                  borderWidth: 1,
-                  borderColor: "#FFE082",
-                  marginBottom: 12,
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.03,
+                  shadowRadius: 4,
+                  elevation: 1,
+                  marginBottom: 8,
+                }}
+              >
+                <View style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  backgroundColor: "#f5f5f5",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginRight: 12,
                 }}>
-                  <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
-                    <MaterialIcons name="info-outline" size={18} color="#F57C00" />
-                    <Text style={{ fontSize: 14, fontWeight: "600", color: "#F57C00", marginLeft: 8 }}>
-                      안내
-                    </Text>
-                  </View>
-                  <Text style={{ fontSize: 14, color: "#666", lineHeight: 20 }}>
-                    온보딩을 완료하면 선택한 정보를 확인할 수 있습니다
-                  </Text>
+                  <MaterialIcons name="info-outline" size={20} color="#007AFF" />
                 </View>
-              )}
+                <Text style={{ fontSize: 16, fontWeight: "500", color: "#1a1a1a", flex: 1 }}>
+                  앱 기능 안내
+                </Text>
+                <MaterialIcons name="chevron-right" size={24} color="#ccc" />
+              </Pressable>
               
               <Pressable
                 onPress={() => router.push("/mypage/login")}
@@ -349,6 +410,126 @@ export default function MyPageScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* 연령대 선택 모달 */}
+      <Modal
+        visible={showAgeModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowAgeModal(false)}
+      >
+        <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }} edges={["top", "bottom"]}>
+          <View style={{ padding: 20, borderBottomWidth: 1, borderBottomColor: "#e5e5e5" }}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+              <Text style={{ fontSize: 20, fontWeight: "700", color: "#1a1a1a" }}>
+                연령대 선택
+              </Text>
+              <Pressable onPress={() => setShowAgeModal(false)}>
+                <MaterialIcons name="close" size={24} color="#1a1a1a" />
+              </Pressable>
+            </View>
+          </View>
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20 }}>
+            <View style={{ gap: 12 }}>
+              {AGE_OPTIONS.map((option) => {
+                const isSelected = age === option.value;
+                return (
+                  <Pressable
+                    key={option.value}
+                    onPress={() => handleAgeSelect(option.value)}
+                    style={{
+                      padding: 20,
+                      borderRadius: 16,
+                      borderWidth: 2,
+                      borderColor: isSelected ? "#007AFF" : "#e5e5e5",
+                      backgroundColor: isSelected ? "#F0F8FF" : "#fff",
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 18,
+                        fontWeight: isSelected ? "600" : "500",
+                        color: isSelected ? "#007AFF" : "#1a1a1a",
+                      }}
+                    >
+                      {option.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
+      {/* 설명 수준 선택 모달 */}
+      <Modal
+        visible={showAestheticModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowAestheticModal(false)}
+      >
+        <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }} edges={["top", "bottom"]}>
+          <View style={{ padding: 20, borderBottomWidth: 1, borderBottomColor: "#e5e5e5" }}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+              <Text style={{ fontSize: 20, fontWeight: "700", color: "#1a1a1a" }}>
+                설명 수준 선택
+              </Text>
+              <Pressable onPress={() => setShowAestheticModal(false)}>
+                <MaterialIcons name="close" size={24} color="#1a1a1a" />
+              </Pressable>
+            </View>
+          </View>
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20 }}>
+            <View style={{ gap: 16 }}>
+              {AESTHETIC_OPTIONS.map((option) => {
+                const isSelected = aesthetic === option.key;
+                return (
+                  <Pressable
+                    key={option.key}
+                    onPress={() => handleAestheticSelect(option.key)}
+                    style={{
+                      padding: 24,
+                      borderRadius: 20,
+                      borderWidth: 2,
+                      borderColor: isSelected ? "#007AFF" : "#e5e5e5",
+                      backgroundColor: isSelected ? "#F0F8FF" : "#fff",
+                    }}
+                  >
+                    <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
+                      <MaterialIcons
+                        name={option.icon as any}
+                        size={28}
+                        color={isSelected ? "#007AFF" : "#666"}
+                        style={{ marginRight: 12 }}
+                      />
+                      <Text
+                        style={{
+                          fontSize: 20,
+                          fontWeight: isSelected ? "700" : "600",
+                          color: isSelected ? "#007AFF" : "#1a1a1a",
+                        }}
+                      >
+                        {option.title}
+                      </Text>
+                    </View>
+                    <Text
+                      style={{
+                        marginLeft: 40,
+                        fontSize: 15,
+                        color: isSelected ? "#007AFF" : "#666",
+                        lineHeight: 22,
+                      }}
+                    >
+                      {option.desc}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }

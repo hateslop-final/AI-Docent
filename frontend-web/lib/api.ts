@@ -47,8 +47,9 @@ export async function deleteGallery(id: number) {
 export async function fetchExhibitions(galleryId: number) {
   const { data, error } = await supabase
     .from("Exhibition")
-    .select("*")
-    .eq("gallery_id", galleryId);
+    .select("id, gallery_id, name, description, info, start_date, end_date, is_now, show, brochure, location, admission_fee, poster_url")
+    .eq("gallery_id", galleryId)
+    .order("id", { ascending: false });
   if (error) throw new Error(`전시 조회 실패: ${error.message}`);
   return data || [];
 }
@@ -57,13 +58,15 @@ export async function createExhibition(data: {
   gallery_id: number;
   name: string;
   description: string;
-  info: string;
+  info?: string;
   start_date: string;
   end_date: string;
   is_now: boolean;
+  show: boolean;
   brochure?: string;
   location: string;
   admission_fee?: string;
+  poster_url?: string;
 }) {
   const { data: result, error } = await supabase
     .from("Exhibition")
@@ -80,13 +83,15 @@ export async function updateExhibition(
     gallery_id: number;
     name: string;
     description: string;
-    info: string;
+    info?: string;
     start_date: string;
     end_date: string;
     is_now: boolean;
+    show?: boolean;
     brochure?: string;
     location: string;
     admission_fee?: string;
+    poster_url?: string;
   }
 ) {
   const { data: result, error } = await supabase
@@ -239,4 +244,28 @@ export async function searchByImage(file: File, exhibitionId: number) {
 
   if (!res.ok) throw new Error("이미지 검색 실패");
   return res.json();
+}
+export async function uploadExhibitionPosterById(
+  file: File,
+  exhibitionId: number
+): Promise<string> {
+  const ext = file.name.split(".").pop() || "png";
+  const filePath = `poster/${exhibitionId}/poster.${ext}`;
+
+  const { error } = await supabase.storage
+    .from("AI_Docent")
+    .upload(filePath, file, {
+      upsert: true, // ✅ 같은 전시 포스터 교체 가능
+      contentType: file.type,
+    });
+
+  if (error) {
+    throw new Error("포스터 업로드 실패: " + error.message);
+  }
+
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from("AI_Docent").getPublicUrl(filePath);
+
+  return publicUrl;
 }

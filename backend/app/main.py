@@ -24,11 +24,17 @@ app.add_middleware(
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     start_time = time.time()
+    
+    # 요청 시작 로그
+    print(f"[REQUEST] {request.method} {request.url.path} - 시작")
+    print(f"[REQUEST] Headers: {dict(request.headers)}")
+    print(f"[REQUEST] Query params: {dict(request.query_params)}")
+    
     response = await call_next(request)
     process_time = time.time() - start_time
 
     print(
-        f"{request.method} {request.url.path} "
+        f"[REQUEST] {request.method} {request.url.path} "
         f"- {response.status_code} "
         f"- {process_time:.3f}s"
     )
@@ -42,3 +48,37 @@ async def log_requests(request: Request, call_next):
 app.include_router(image_search_router)
 app.include_router(auth_router)
 app.include_router(chatbot_router)
+
+# ================================
+# 🔥 Health Check
+# ================================
+@app.get("/")
+async def root():
+    return {
+        "status": "ok",
+        "message": "AI Docent Backend is running",
+        "endpoints": {
+            "chatbot": "POST /chatbot/",
+            "image_search": "POST /image-search/",
+            "auth": "DELETE /auth/withdraw"
+        }
+    }
+
+@app.get("/health")
+async def health():
+    return {"status": "healthy"}
+
+# ================================
+# 🔥 Startup Event
+# ================================
+@app.on_event("startup")
+async def startup_event():
+    print("=" * 80)
+    print("[SERVER] AI Docent Backend 서버 시작 완료")
+    print("[SERVER] 등록된 엔드포인트:")
+    print("[SERVER]   - GET  / (헬스체크)")
+    print("[SERVER]   - GET  /health (헬스체크)")
+    print("[SERVER]   - POST /chatbot/")
+    print("[SERVER]   - POST /image-search/")
+    print("[SERVER]   - DELETE /auth/withdraw")
+    print("=" * 80)

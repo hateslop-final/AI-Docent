@@ -5,9 +5,9 @@ type State = {
   aesthetic?: string;
   gallery?: number;
   exhibition?: number;
-  setAge: (age: string) => void;
-  setAesthetic: (level: string) => void;
-  setGallery: (galleryId: number) => void;
+  setAge: (age: string | undefined) => void;
+  setAesthetic: (level: string | undefined) => void;
+  setGallery: (galleryId: number | undefined) => void;
   setExhibition: (exhibitionId: number | undefined) => void;
   clearExhibition: () => void;
 };

@@ -163,5 +163,16 @@ export const ChatDatabaseService = {
     if (historyError) throw historyError;
 
     return true;
+  },
+
+  async getSessionInfo(sessionId: number) {
+    const { data, error } = await supabase
+      .from('chat_history')
+      .select('id, title, created_at, updated_at')
+      .eq('id', sessionId)
+      .single();
+
+    if (error) throw error;
+    return data as { id: number; title: string | null; created_at: string; updated_at?: string } | null;
   }
 };

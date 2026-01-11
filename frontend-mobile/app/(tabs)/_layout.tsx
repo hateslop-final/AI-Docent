@@ -24,11 +24,14 @@ export default function TabLayout() {
   // approach used previously when placing the header in screenOptions).
   const CustomHeader = React.memo(() => React.createElement(ExhibitionHeader as any));
 
+  // Hide ExhibitionHeader on mypage
+  const isMyPage = pathname?.includes('/mypage');
+
   return (
     <View style={{ flex: 1, position: 'relative' }}>
       {/* Render a stable header above the Tabs so it doesn't disappear when
           tabs change or when the router swaps screens. */}
-      <CustomHeader />
+      {!isMyPage && <CustomHeader />}
 
       <Tabs
         screenOptions={{

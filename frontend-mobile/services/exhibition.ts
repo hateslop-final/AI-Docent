@@ -8,6 +8,7 @@ export type Exhibition = {
   end_date?: string;
   gallery_id?: number;
   is_now?: boolean;
+  show?: boolean;
 };
 
 export async function fetchExhibitionById(id: number): Promise<Exhibition | null> {

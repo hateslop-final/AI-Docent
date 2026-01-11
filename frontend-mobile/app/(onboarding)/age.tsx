@@ -3,6 +3,7 @@ import { useRouter, usePathname } from "expo-router";
 import { useEffect } from "react";
 import { useOnboardingStore } from "@/store/onboarding.store";
 import { SafeAreaView } from "react-native-safe-area-context";
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
 const AGE_OPTIONS = [
   { label: "청소년", value: "teen" },
@@ -16,17 +17,8 @@ export default function Age() {
   const aesthetic = useOnboardingStore((s) => s.aesthetic);
   const pathname = usePathname();
 
-  useEffect(() => {
-    // Only run when this age screen is active
-    if (!pathname?.includes("/age")) return;
-    if (selectedAge) {
-      if (aesthetic) {
-        router.replace("/(onboarding)/gallery" as any);
-      } else {
-        router.replace("/(onboarding)/aesthetic");
-      }
-    }
-  }, [selectedAge, aesthetic, router, pathname]);
+  // Remove auto-redirect to prevent infinite loops
+  // User can manually proceed by selecting an option
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }} edges={["top", "bottom"]}>
@@ -35,6 +27,25 @@ export default function Age() {
         contentContainerStyle={{ padding: 24, paddingTop: 40 }}
         showsVerticalScrollIndicator={false}
       >
+        <Pressable
+          onPress={() => {
+            // Clear age when going back to allow re-selection
+            setAge(undefined);
+            router.replace("/(onboarding)/splash");
+          }}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            marginBottom: 32,
+            paddingVertical: 8,
+            paddingHorizontal: 4,
+          }}
+        >
+          <MaterialIcons name="arrow-back" size={24} color="#1a1a1a" />
+          <Text style={{ marginLeft: 8, fontSize: 16, color: "#1a1a1a" }}>이전</Text>
+        </Pressable>
+
         <Text
           style={{
             fontSize: 28,
