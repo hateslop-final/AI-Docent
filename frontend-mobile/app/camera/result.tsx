@@ -77,6 +77,7 @@ export default function ResultScreen() {
                     router.replace({
                       pathname: "/(tabs)/chat",
                       params: {
+                      exhibitionId: exhibitionId ? String(exhibitionId) : undefined,
                       artworkId: item.id,
                       artworkTitle: item.title,
                       artworkArtist: item.artist,

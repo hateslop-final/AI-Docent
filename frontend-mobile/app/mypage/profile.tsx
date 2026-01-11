@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, Pressable, TextInput, Alert } from "react-native";
+import { View, Text, ScrollView, Pressable, TextInput, Alert, Image, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -6,6 +6,8 @@ import { useAuth } from "@/store/auth.store";
 import { useEffect, useState } from "react";
 import { updateUserProfile } from "@/services/auth";
 import { useOnboardingStore } from "@/store/onboarding.store";
+import * as ImagePicker from "expo-image-picker";
+import { uploadProfileImage, DEFAULT_PROFILE_IMAGE_URL } from "@/services/storage";
 
 const AGE_OPTIONS = [
   { label: "청소년", value: "teen" },
@@ -26,6 +28,9 @@ export default function ProfileScreen() {
   const [nickname, setNickname] = useState("");
   const [selectedAge, setSelectedAge] = useState<string | null>(null);
   const [selectedAesthetic, setSelectedAesthetic] = useState<string | null>(null);
+  const [avatarUri, setAvatarUri] = useState<string>(DEFAULT_PROFILE_IMAGE_URL);
+  const [hasCustomImage, setHasCustomImage] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [loading, setLoading] = useState(false);
   const isFirstTime = !userProfile?.nickname;
 
@@ -36,16 +41,90 @@ export default function ProfileScreen() {
   }, [user, loadUserProfile]);
 
   useEffect(() => {
-    if (userProfile?.nickname) {
+    if (userProfile) {
       setNickname(userProfile.nickname || "");
       setSelectedAge(userProfile.age_range || null);
       setSelectedAesthetic(userProfile.aesthetic_level || null);
+      
+      // userProfile에서 이미지 URL 가져오기 (캐시 무효화)
+      const profileImgUrl = userProfile.user_profile_img_url;
+      if (profileImgUrl) {
+        // 캐시 무효화를 위해 타임스탬프 추가
+        const urlWithCacheBust = `${profileImgUrl}?t=${Date.now()}`;
+        setAvatarUri(urlWithCacheBust);
+        setHasCustomImage(true);
+      } else {
+        setAvatarUri(DEFAULT_PROFILE_IMAGE_URL);
+        setHasCustomImage(false);
+      }
     } else {
-      setNickname(userProfile?.nickname || "");
-      setSelectedAge(age || userProfile?.age_range || null);
-      setSelectedAesthetic(aesthetic || userProfile?.aesthetic_level || null);
+      // userProfile이 없을 때는 기본값 설정
+      setNickname("");
+      setSelectedAge(age || null);
+      setSelectedAesthetic(aesthetic || null);
+      setAvatarUri(DEFAULT_PROFILE_IMAGE_URL);
+      setHasCustomImage(false);
     }
   }, [userProfile, age, aesthetic]);
+
+  const handlePickImage = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("권한 필요", "갤러리 접근 권한이 필요합니다.");
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        quality: 0.8,
+        selectionLimit: 1,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const selectedImage = result.assets[0];
+        
+        if (selectedImage.uri) {
+          setUploadingImage(true);
+          try {
+            const imageUrl = await uploadProfileImage(user!.id, selectedImage.uri);
+            
+            // 즉시 UI에 반영
+            setAvatarUri(imageUrl);
+            setHasCustomImage(true);
+            
+            // DB에 저장 (쿼리 파라미터 제거한 URL 저장)
+            const cleanUrl = imageUrl.split('?')[0];
+            await updateUserProfile(user!.id, {
+              user_profile_img_url: cleanUrl,
+            });
+            
+            // 프로필 다시 로드
+            await loadUserProfile();
+            
+            // 로드 후에도 이미지 URL 유지 (캐시 무효화)
+            setTimeout(() => {
+              setAvatarUri(`${cleanUrl}?t=${Date.now()}`);
+            }, 100);
+          } catch (error: any) {
+            console.error("이미지 업로드 오류:", error);
+            Alert.alert(
+              "업로드 실패", 
+              error.message || "이미지 업로드에 실패했습니다.\n\nStorage 권한을 확인해주세요."
+            );
+          } finally {
+            setUploadingImage(false);
+          }
+        }
+      }
+    } catch (error: any) {
+      setUploadingImage(false);
+      if (error.message && !error.message.includes("User canceled")) {
+        Alert.alert("오류", error.message || "이미지 선택에 실패했습니다.");
+      }
+    }
+  };
 
   const handleSave = async () => {
     if (!user) return;
@@ -67,10 +146,12 @@ export default function ProfileScreen() {
 
     try {
       setLoading(true);
+      
       await updateUserProfile(user.id, {
         nickname: nickname.trim(),
         age_range: selectedAge || undefined,
         aesthetic_level: selectedAesthetic,
+        user_profile_img_url: hasCustomImage ? avatarUri || undefined : DEFAULT_PROFILE_IMAGE_URL,
       });
       await loadUserProfile();
       
@@ -131,7 +212,7 @@ export default function ProfileScreen() {
               style={{
                 paddingHorizontal: 16,
                 paddingVertical: 8,
-                backgroundColor: (loading || !nickname.trim() || !selectedAge || !selectedAesthetic) ? "#ccc" : "#007AFF",
+                backgroundColor: (loading || !nickname.trim() || !selectedAge || !selectedAesthetic) ? "#ccc" : "#000",
                 borderRadius: 8,
               }}
             >
@@ -146,7 +227,7 @@ export default function ProfileScreen() {
               style={{
                 paddingHorizontal: 16,
                 paddingVertical: 8,
-                backgroundColor: loading ? "#ccc" : "#007AFF",
+                backgroundColor: loading ? "#ccc" : "#000",
                 borderRadius: 8,
               }}
             >
@@ -159,17 +240,75 @@ export default function ProfileScreen() {
 
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
           <View style={{ alignItems: "center", marginBottom: 32 }}>
-            <View style={{
-              width: 100,
-              height: 100,
-              borderRadius: 50,
-              backgroundColor: "#007AFF",
-              alignItems: "center",
-              justifyContent: "center",
-              marginBottom: 16,
-            }}>
-              <MaterialIcons name="person" size={48} color="#fff" />
-            </View>
+            <Pressable
+              onPress={handlePickImage}
+              disabled={uploadingImage}
+              style={{
+                width: 100,
+                height: 100,
+                borderRadius: 50,
+                backgroundColor: "#000",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: 16,
+                overflow: "hidden",
+                borderWidth: 2,
+                borderColor: "#e5e5e5",
+              }}
+            >
+              <Image
+                source={{ uri: avatarUri }}
+                style={{ width: 100, height: 100 }}
+                resizeMode="cover"
+              />
+              {uploadingImage && (
+                <View
+                  style={{
+                    position: "absolute",
+                    width: 100,
+                    height: 100,
+                    backgroundColor: "rgba(0,0,0,0.5)",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <ActivityIndicator size="small" color="#fff" />
+                </View>
+              )}
+              <View
+                style={{
+                  position: "absolute",
+                  bottom: 0,
+                  right: 0,
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  backgroundColor: "#fff",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderWidth: 3,
+                  borderColor: "#fff",
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.15,
+                  shadowRadius: 4,
+                  elevation: 4,
+                }}
+              >
+                <View
+                  style={{
+                    width: 30,
+                    height: 30,
+                    borderRadius: 15,
+                    backgroundColor: "#000",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <MaterialIcons name="camera-alt" size={18} color="#fff" />
+                </View>
+              </View>
+            </Pressable>
             <Text style={{ fontSize: 20, fontWeight: "600", marginBottom: 4 }}>
               {userProfile?.nickname || user?.email || "사용자"}
             </Text>
@@ -222,14 +361,14 @@ export default function ProfileScreen() {
                         padding: 16,
                         borderRadius: 12,
                         borderWidth: 2,
-                        borderColor: isSelected ? "#007AFF" : "#e5e5e5",
-                        backgroundColor: isSelected ? "#F0F8FF" : "#fff",
+                        borderColor: isSelected ? "#000" : "#e5e5e5",
+                        backgroundColor: isSelected ? "#f5f5f5" : "#fff",
                       }}
                     >
                       <Text style={{
                         fontSize: 16,
                         fontWeight: isSelected ? "600" : "500",
-                        color: isSelected ? "#007AFF" : "#1a1a1a",
+                        color: isSelected ? "#000" : "#1a1a1a",
                       }}>
                         {option.label}
                       </Text>
@@ -254,21 +393,21 @@ export default function ProfileScreen() {
                         padding: 16,
                         borderRadius: 12,
                         borderWidth: 2,
-                        borderColor: isSelected ? "#007AFF" : "#e5e5e5",
-                        backgroundColor: isSelected ? "#F0F8FF" : "#fff",
+                        borderColor: isSelected ? "#000" : "#e5e5e5",
+                        backgroundColor: isSelected ? "#f5f5f5" : "#fff",
                       }}
                     >
                       <Text style={{
                         fontSize: 16,
                         fontWeight: isSelected ? "600" : "500",
-                        color: isSelected ? "#007AFF" : "#1a1a1a",
+                        color: isSelected ? "#000" : "#1a1a1a",
                         marginBottom: 4,
                       }}>
                         {option.title}
                       </Text>
                       <Text style={{
                         fontSize: 14,
-                        color: isSelected ? "#007AFF" : "#666",
+                        color: isSelected ? "#000" : "#666",
                       }}>
                         {option.desc}
                       </Text>
@@ -277,23 +416,6 @@ export default function ProfileScreen() {
                 })}
               </View>
             </View>
-
-            {!isFirstTime && (
-              <View>
-                <Text style={{ fontSize: 12, color: "#666", marginBottom: 4 }}>
-                  이메일
-                </Text>
-                <View style={{
-                  padding: 16,
-                  backgroundColor: "#f5f5f5",
-                  borderRadius: 12,
-                }}>
-                  <Text style={{ fontSize: 16, fontWeight: "500" }}>
-                    {user?.email || "-"}
-                  </Text>
-                </View>
-              </View>
-            )}
           </View>
         </ScrollView>
       </View>

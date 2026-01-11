@@ -1,6 +1,6 @@
 import { View, Text, Animated } from "react-native";
 import { useEffect, useRef } from "react";
-import { useRouter } from "expo-router";
+import { useRouter, usePathname } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@/store/auth.store";
 import { useOnboardingStore } from "@/store/onboarding.store";
@@ -14,6 +14,7 @@ export default function Splash() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const hasNavigated = useRef(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     if (!initialized) {
@@ -64,6 +65,11 @@ export default function Splash() {
       }, 2000);
     };
 
+    // Only run navigation logic when this splash route is active. This prevents
+    // other parts of the app (that also read onboarding store) from causing
+    // the splash navigations when they update global onboarding state.
+    if (!pathname?.includes("/splash")) return;
+
     if (initialized) {
       navigate();
     } else {
@@ -78,7 +84,7 @@ export default function Splash() {
         if (checkTimer) clearInterval(checkTimer);
         navigate();
       }, 3000);
-    }
+  }
 
     return () => {
       if (timer) clearTimeout(timer);

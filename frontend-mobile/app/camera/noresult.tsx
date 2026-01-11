@@ -90,6 +90,7 @@ export default function NoResultScreen() {
                   router.replace({
                     pathname: "/(tabs)/chat",
                     params: {
+                      exhibitionId: String(exhibitionId),
                       artworkId: artwork.id,
                       artworkTitle: artwork.title,
                       artworkArtist: artwork.artist,

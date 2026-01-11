@@ -1,5 +1,5 @@
 import { View, Text, Pressable, ScrollView } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, usePathname } from "expo-router";
 import { useEffect } from "react";
 import { useOnboardingStore } from "@/store/onboarding.store";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -17,8 +17,13 @@ export default function Aesthetic() {
   const selectedLevel = useOnboardingStore((s) => s.aesthetic);
   const age = useOnboardingStore((s) => s.age);
   const gallery = useOnboardingStore((s) => s.gallery);
+  const pathname = usePathname();
 
   useEffect(() => {
+    // Only run redirect logic when this screen is active to avoid reacting to global
+    // store changes triggered from other screens/components (e.g., header).
+    if (!pathname?.includes("/aesthetic")) return;
+
     if (!age) {
       router.replace("/(onboarding)/age");
     } else if (gallery) {
@@ -26,7 +31,7 @@ export default function Aesthetic() {
     } else if (selectedLevel) {
       router.replace("/(onboarding)/gallery");
     }
-  }, [age, selectedLevel, gallery, router]);
+  }, [age, selectedLevel, gallery, router, pathname]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }} edges={["top", "bottom"]}>

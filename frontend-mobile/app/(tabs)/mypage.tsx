@@ -1,4 +1,5 @@
 import { View, Text, Image, ScrollView, Pressable } from "react-native";
+import { DEFAULT_PROFILE_IMAGE_URL } from "@/services/storage";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useEffect } from "react";
@@ -70,12 +71,23 @@ export default function MyPageScreen() {
                   width: 64,
                   height: 64,
                   borderRadius: 32,
-                  backgroundColor: "#007AFF",
+                  backgroundColor: "#000",
                   alignItems: "center",
                   justifyContent: "center",
                   marginRight: 16,
+                  overflow: "hidden",
+                  borderWidth: 2,
+                  borderColor: "#e5e5e5",
                 }}>
-                  <MaterialIcons name="person" size={32} color="#fff" />
+                  {userProfile?.user_profile_img_url ? (
+                    <Image
+                      source={{ uri: userProfile.user_profile_img_url }}
+                      style={{ width: 64, height: 64 }}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <MaterialIcons name="person" size={32} color="#fff" />
+                  )}
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 20, fontWeight: "700", color: "#1a1a1a", marginBottom: 4 }}>
@@ -208,12 +220,12 @@ export default function MyPageScreen() {
                   width: 40,
                   height: 40,
                   borderRadius: 20,
-                  backgroundColor: "#F0F8FF",
+                  backgroundColor: "#f5f5f5",
                   alignItems: "center",
                   justifyContent: "center",
                   marginRight: 12,
                 }}>
-                  <MaterialIcons name="person" size={20} color="#007AFF" />
+                  <MaterialIcons name="person" size={20} color="#000" />
                 </View>
                 <Text style={{ fontSize: 16, fontWeight: "500", color: "#1a1a1a", flex: 1 }}>
                   프로필
@@ -240,12 +252,12 @@ export default function MyPageScreen() {
                   width: 40,
                   height: 40,
                   borderRadius: 20,
-                  backgroundColor: "#F0F8FF",
+                  backgroundColor: "#f5f5f5",
                   alignItems: "center",
                   justifyContent: "center",
                   marginRight: 12,
                 }}>
-                  <MaterialIcons name="settings" size={20} color="#007AFF" />
+                  <MaterialIcons name="settings" size={20} color="#000" />
                 </View>
                 <Text style={{ fontSize: 16, fontWeight: "500", color: "#1a1a1a", flex: 1 }}>
                   설정
@@ -319,9 +331,9 @@ export default function MyPageScreen() {
                   alignItems: "center",
                   justifyContent: "center",
                   padding: 18,
-                  backgroundColor: "#007AFF",
+                  backgroundColor: "#000",
                   borderRadius: 12,
-                  shadowColor: "#007AFF",
+                  shadowColor: "#000",
                   shadowOffset: { width: 0, height: 4 },
                   shadowOpacity: 0.2,
                   shadowRadius: 8,

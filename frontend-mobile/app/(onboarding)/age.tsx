@@ -1,11 +1,11 @@
 import { View, Text, Pressable, ScrollView } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, usePathname } from "expo-router";
 import { useEffect } from "react";
 import { useOnboardingStore } from "@/store/onboarding.store";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const AGE_OPTIONS = [
-  { label: "청년", value: "teen" },
+  { label: "청소년", value: "teen" },
   { label: "성인", value: "adult" },
 ] as const;
 
@@ -14,8 +14,11 @@ export default function Age() {
   const setAge = useOnboardingStore((s) => s.setAge);
   const selectedAge = useOnboardingStore((s) => s.age);
   const aesthetic = useOnboardingStore((s) => s.aesthetic);
+  const pathname = usePathname();
 
   useEffect(() => {
+    // Only run when this age screen is active
+    if (!pathname?.includes("/age")) return;
     if (selectedAge) {
       if (aesthetic) {
         router.replace("/(onboarding)/gallery" as any);
@@ -23,7 +26,7 @@ export default function Age() {
         router.replace("/(onboarding)/aesthetic");
       }
     }
-  }, [selectedAge, aesthetic, router]);
+  }, [selectedAge, aesthetic, router, pathname]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }} edges={["top", "bottom"]}>

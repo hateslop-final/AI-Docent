@@ -2,6 +2,7 @@ import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { supabase } from './supabase';
 import { API_BASE } from './api';
+import { DEFAULT_PROFILE_IMAGE_URL } from './storage';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -16,6 +17,7 @@ export interface UserProfile {
   nickname?: string;
   age_range?: string;
   aesthetic_level?: string;
+  user_profile_img_url?: string;
   role?: string;
 }
 
@@ -46,6 +48,7 @@ export async function updateUserProfile(
     nickname?: string;
     age_range?: string;
     aesthetic_level?: string;
+    user_profile_img_url?: string;
   }
 ): Promise<UserProfile | null> {
   const { data, error } = await supabase
@@ -56,7 +59,8 @@ export async function updateUserProfile(
     .single();
   
   if (error) {
-    console.error('Error updating user profile:', error);
+    console.error('❌ Error updating user profile:', error);
+    console.error('❌ 전달된 updates:', updates);
     throw error;
   }
   return data;
@@ -77,11 +81,6 @@ export async function signIn(email: string, password: string) {
   if (error) throw error;
   return data;
 }
-
-const ageRangeMap = {
-  'teen': 'teen',
-  'adult': 'adult',
-} as const;
 
 export async function signUp(
   email: string, 
@@ -108,28 +107,29 @@ export async function signUp(
     return authData;
   }
   
-  if (nickname || ageRange || aestheticLevel) {
-    const updateData: any = {};
-    if (nickname) updateData.nickname = nickname;
-    if (ageRange) {
-      updateData.age_range = ageRange;
-    }
-    if (aestheticLevel) updateData.aesthetic_level = aestheticLevel;
+  const updateData: any = {
+    user_profile_img_url: DEFAULT_PROFILE_IMAGE_URL,
+  };
+  
+  if (nickname) updateData.nickname = nickname;
+  if (ageRange) {
+    updateData.age_range = ageRange;
+  }
+  if (aestheticLevel) updateData.aesthetic_level = aestheticLevel;
+  
+  await new Promise(resolve => setTimeout(resolve, 500));
+  
+  let retries = 3;
+  while (retries > 0) {
+    const { error } = await supabase
+      .from('users')
+      .update(updateData)
+      .eq('id', authData.user.id);
     
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    let retries = 3;
-    while (retries > 0) {
-      const { error } = await supabase
-        .from('users')
-        .update(updateData)
-        .eq('id', authData.user.id);
-      
-      if (!error) break;
-      retries--;
-      if (retries > 0) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
+    if (!error) break;
+    retries--;
+    if (retries > 0) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
   }
   

@@ -27,7 +27,6 @@ export const useAuth = create<AuthState>((set, get) => ({
     try {
       set({ loading: true });
       const session = await getSession();
-      
       if (session?.user) {
         set({ user: session.user, initialized: true });
         const profile = await getUserProfile(session.user.id);
@@ -64,19 +63,20 @@ export const useAuth = create<AuthState>((set, get) => ({
   },
 }));
 
+// 최적화된 Auth 상태 구독 훅
 export function useAuthState() {
-  const { setUser, loadUserProfile, initialize } = useAuth();
+  const setUser = useAuth((s) => s.setUser);
+  const loadUserProfile = useAuth((s) => s.loadUserProfile);
+  const initialize = useAuth((s) => s.initialize);
 
   useEffect(() => {
     initialize();
-
     const { data: { subscription } } = onAuthStateChange(async (user) => {
       setUser(user);
       if (user) {
         await loadUserProfile();
       }
     });
-
     return () => {
       subscription.unsubscribe();
     };

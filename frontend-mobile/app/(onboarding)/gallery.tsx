@@ -1,5 +1,5 @@
 import { View, Text, Pressable, ScrollView, ActivityIndicator } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, usePathname } from "expo-router";
 import { useEffect, useState } from "react";
 import { useOnboardingStore } from "@/store/onboarding.store";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -14,15 +14,18 @@ export default function GalleryScreen() {
   const selectedGallery = useOnboardingStore((s) => s.gallery);
   const age = useOnboardingStore((s) => s.age);
   const aesthetic = useOnboardingStore((s) => s.aesthetic);
+  const pathname = usePathname();
   
   const [galleries, setGalleries] = useState<Gallery[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Only redirect when this onboarding gallery screen is active.
+    if (!pathname?.includes("/gallery")) return;
     if (!user && (!age || !aesthetic)) {
       router.replace("/(onboarding)/age");
     }
-  }, [user, age, aesthetic, router]);
+  }, [user, age, aesthetic, router, pathname]);
 
   useEffect(() => {
     async function loadGalleries() {

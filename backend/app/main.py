@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import time
 from app.api.image_search import router as image_search_router
 from app.api.auth import router as auth_router
+from app.api.chatbot import router as chatbot_router
 
 app = FastAPI(title="AI Docent Backend")
 
@@ -40,3 +41,4 @@ async def log_requests(request: Request, call_next):
 # ================================
 app.include_router(image_search_router)
 app.include_router(auth_router)
+app.include_router(chatbot_router)
