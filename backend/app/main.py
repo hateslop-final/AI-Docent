@@ -49,36 +49,11 @@ app.include_router(image_search_router)
 app.include_router(auth_router)
 app.include_router(chatbot_router)
 
-# ================================
-# 🔥 Health Check
-# ================================
-@app.get("/")
-async def root():
-    return {
-        "status": "ok",
-        "message": "AI Docent Backend is running",
-        "endpoints": {
-            "chatbot": "POST /chatbot/",
-            "image_search": "POST /image-search/",
-            "auth": "DELETE /auth/withdraw"
-        }
-    }
-
-@app.get("/health")
-async def health():
-    return {"status": "healthy"}
-
-# ================================
-# 🔥 Startup Event
-# ================================
-@app.on_event("startup")
-async def startup_event():
-    print("=" * 80)
-    print("[SERVER] AI Docent Backend 서버 시작 완료")
-    print("[SERVER] 등록된 엔드포인트:")
-    print("[SERVER]   - GET  / (헬스체크)")
-    print("[SERVER]   - GET  /health (헬스체크)")
-    print("[SERVER]   - POST /chatbot/")
-    print("[SERVER]   - POST /image-search/")
-    print("[SERVER]   - DELETE /auth/withdraw")
-    print("=" * 80)
+# 서버 시작 로그
+print("=" * 80)
+print("[SERVER] AI Docent Backend 서버 시작 완료")
+print("[SERVER] 등록된 엔드포인트:")
+print("[SERVER]   - POST /chatbot/")
+print("[SERVER]   - POST /image-search/")
+print("[SERVER]   - DELETE /auth/withdraw")
+print("=" * 80)

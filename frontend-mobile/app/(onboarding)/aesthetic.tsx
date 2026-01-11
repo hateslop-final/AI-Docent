@@ -28,9 +28,9 @@ export default function Aesthetic() {
       router.replace("/(onboarding)/age");
     } else if (gallery) {
       router.replace("/(tabs)");
+    } else if (selectedLevel) {
+      router.replace("/(onboarding)/gallery");
     }
-    // Remove auto-redirect to prevent infinite loops
-    // User can manually proceed by selecting an option
   }, [age, selectedLevel, gallery, router, pathname]);
 
   return (
@@ -41,11 +41,7 @@ export default function Aesthetic() {
         showsVerticalScrollIndicator={false}
       >
         <Pressable
-          onPress={() => {
-            // Clear aesthetic when going back to allow re-selection
-            setLevel(undefined);
-            router.replace("/(onboarding)/age");
-          }}
+          onPress={() => router.back()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           style={{
             flexDirection: "row",

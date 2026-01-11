@@ -1,4 +1,4 @@
-import { Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { Alert, Image, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useMemo, useState } from "react";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -7,6 +7,7 @@ import { useChatStore, Message } from "@/store/chat.store";
 import { useAuth } from "@/store/auth.store";
 import { ChatbotService } from "@/services/chatbot";
 import SessionListModal from '@/components/SessionListModal';
+import ChatInput from '@/components/ChatInput';
 import { ChatDatabaseService } from '@/services/chathistory_service';
 import { fetchExhibitions, Exhibition } from "@/services/exhibition";
 import { fetchGalleries, Gallery } from "@/services/gallery";
@@ -377,11 +378,6 @@ export default function ChatScreen() {
 
   /** ===== UI ===== */
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={90}
-    >
       <View style={{ flex: 1, backgroundColor: "#fff" }}>
         {/* 세션 제목 헤더 (로그인한 사용자만 표시) */}
         {isLoggedIn && exhibitionId && (
@@ -490,45 +486,22 @@ export default function ChatScreen() {
         )}
 
         {/* 입력 */}
-        <View style={{ flexDirection: "row", padding: 12, paddingBottom: 100, alignItems: 'center' }}>
-          {exhibitionId ? (
-            <Pressable onPress={handleCameraPress}>
-              {isPastExhibition ? (
-                <MaterialIcons name="image-search" size={24} color="#007AFF" />
-              ) : (
-                <MaterialIcons name="camera-alt" size={24} color="#007AFF" />
-              )}
-            </Pressable>
-          ) : (
-            <View style={{ padding: 6 }}>
-              <MaterialIcons name="camera-alt" size={24} color="#ccc" />
-            </View>
-          )}
-
-          <TextInput
-            style={{ flex: 1, marginHorizontal: 8, backgroundColor: "#f5f5f5", borderRadius: 20, padding: 10 }}
-            value={message}
-            onChangeText={setMessage}
-            editable={!!exhibitionId && !isLoading}
-            placeholder={
-              !exhibitionId 
-                ? "전시를 선택해주세요"
-                : isPastExhibition
-                ? "작품을 검색하거나 질문해보세요"
-                : "작품을 촬영하거나 질문해보세요"
-            }
-          />
-
-          {exhibitionId && message.trim() ? (
-            <Pressable onPress={handleSendMessage}>
-              <MaterialIcons name="send" size={24} color="#007AFF" />
-            </Pressable>
-          ) : (
-            <View style={{ padding: 6 }}>
-              <MaterialIcons name="send" size={24} color="#ccc" />
-            </View>
-          )}
-        </View>
+        <ChatInput
+          message={message}
+          onChangeText={setMessage}
+          onSend={handleSendMessage}
+          onCameraPress={handleCameraPress}
+          exhibitionId={exhibitionId}
+          isLoading={isLoading}
+          isPastExhibition={isPastExhibition}
+          placeholder={
+            !exhibitionId 
+              ? "전시를 선택해주세요"
+              : isPastExhibition
+              ? "작품을 검색하거나 질문해보세요"
+              : "작품을 촬영하거나 질문해보세요"
+          }
+        />
         <SessionListModal
           // Only allow the modal to be visible when an exhibition is selected.
           visible={showSessions && !!exhibitionId}
@@ -588,6 +561,5 @@ export default function ChatScreen() {
           }}
         />
       </View>
-    </KeyboardAvoidingView>
   );
 }

@@ -66,12 +66,6 @@ export default function SessionListModal({
   const handleCreate = async () => {
     if (!user || !exhibitionId) return;
 
-    // 세션 개수 제한 체크 (5개)
-    if (sessions.length >= 5) {
-      Alert.alert('세션 제한', '세션은 전시당 5개까지만 생성할 수 있습니다.');
-      return;
-    }
-
     setLoading(true);
     try {
       const r = await ChatDatabaseService.createSession(
@@ -145,13 +139,9 @@ export default function SessionListModal({
             </Text>
 
             <View style={{ flexDirection: 'row' }}>
-              <Pressable 
-                onPress={handleCreate} 
-                disabled={sessions.length >= 5}
-                style={{ padding: 8, opacity: sessions.length >= 5 ? 0.4 : 1 }}
-              >
+              <Pressable onPress={handleCreate} style={{ padding: 8 }}>
                 <Text
-                  style={{ color: sessions.length >= 5 ? '#999' : '#007AFF', fontWeight: '600' }}
+                  style={{ color: '#007AFF', fontWeight: '600' }}
                 >
                   ＋ 새 세션
                 </Text>
@@ -235,15 +225,6 @@ export default function SessionListModal({
                 </Pressable>
               </View>
             )}
-            ListFooterComponent={
-              sessions.length >= 5 ? (
-                <View style={{ padding: 16, alignItems: 'center' }}>
-                  <Text style={{ fontSize: 13, color: '#999' }}>
-                    세션은 5개까지만 허용됩니다.
-                  </Text>
-                </View>
-              ) : null
-            }
           />
         )}
       </SafeAreaView>

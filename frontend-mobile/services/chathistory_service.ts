@@ -173,6 +173,6 @@ export const ChatDatabaseService = {
       .single();
 
     if (error) throw error;
-    return data as { id: number; title: string | null; created_at: string; updated_at?: string } | null;
+    return data as { id: number; title: string; created_at: string; updated_at: string } | null;
   }
 };

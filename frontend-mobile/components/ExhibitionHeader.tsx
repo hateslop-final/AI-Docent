@@ -81,45 +81,27 @@ export default function ExhibitionHeader() {
     return exhibitions.some((e) => e.id === exhibitionId);
   }, [exhibitions, exhibitionId]);
 
-  /** ===== 실제 선택 반영 로직 (함수 분리) ===== */
-  const confirmGallerySelection = (id: number) => {
-    // 갤러리 선택 시 전시 초기화
-    setExhibition(undefined);
-    useChatStore.getState().setCurrentSessionId(null);
-    useChatStore.getState().clearAllChatHistories();
-    setSelectedGalleryId(id);
-    setGallery(id);
-    setShowList(false);
-  };
-
-  const confirmExhibitionSelection = (id: number) => {
-    // 전시 선택 시
-    setExhibition(id);
-  };
-
-  /** ===== 전시 변경 처리 (홈 탭에서 전시 변경 시) ===== */
+  /** ===== 전시 변경 감지 및 저장 여부 확인 ===== */
   const prevExhibitionIdRef = useRef<number | undefined>(exhibitionId);
   const isProcessingChangeRef = useRef(false);
-  
+
   useEffect(() => {
-    // 이미 처리 중이면 무시
     if (isProcessingChangeRef.current) return;
-    
+
     const prevId = prevExhibitionIdRef.current;
     const currentId = exhibitionId;
-    
-    // 전시가 변경되었고, 이전 전시가 있었을 때만 확인
+
     if (prevId !== undefined && prevId !== currentId) {
       const hasHistoryNow = (() => {
         const h = useChatStore.getState().getChatHistory(prevId);
         return (h?.messages.length ?? 0) > 0;
       })();
-      
+
       if (hasHistoryNow) {
         isProcessingChangeRef.current = true;
         const currentMessages = getChatHistory(prevId)?.messages || [];
         const currentExhibitionName = exhibitions.find(e => e.id === prevId)?.name || "알 수 없는 전시";
-        
+
         if (!user) {
           Alert.alert(
             "기록 저장 안내",
@@ -138,18 +120,16 @@ export default function ExhibitionHeader() {
               {
                 text: "로그인하기",
                 onPress: () => {
-                  // 전시 변경 취소
-                  setExhibition(prevId);
+                  setExhibition(prevId); // Revert selection
                   isProcessingChangeRef.current = false;
                   router.push("/mypage");
                 },
               },
-              { 
-                text: "취소", 
+              {
+                text: "취소",
                 style: "cancel",
                 onPress: () => {
-                  // 전시 변경 취소
-                  setExhibition(prevId);
+                  setExhibition(prevId); // Revert selection
                   isProcessingChangeRef.current = false;
                 }
               }
@@ -157,9 +137,8 @@ export default function ExhibitionHeader() {
           );
           return;
         }
-        
+
         if (user) {
-          // 전시 내 모든 세션 일괄 저장 여부 확인
           Alert.alert(
             "기록 저장",
             "이 전시의 모든 대화 내용을 저장하시겠습니까?",
@@ -168,7 +147,6 @@ export default function ExhibitionHeader() {
                 text: "저장 후 변경",
                 onPress: async () => {
                   try {
-                    // 현재 세션 저장
                     await ChatDatabaseService.saveFullHistory(
                       user.id,
                       prevId,
@@ -185,8 +163,7 @@ export default function ExhibitionHeader() {
                   } catch (e) {
                     console.error("저장 실패:", e);
                     Alert.alert("오류", "기록 저장 중 문제가 발생했습니다.");
-                    // 저장 실패 시 전시 변경 취소
-                    setExhibition(prevId);
+                    setExhibition(prevId); // Revert selection
                     isProcessingChangeRef.current = false;
                   }
                 }
@@ -201,12 +178,11 @@ export default function ExhibitionHeader() {
                   prevExhibitionIdRef.current = currentId;
                 }
               },
-              { 
-                text: "취소", 
+              {
+                text: "취소",
                 style: "cancel",
                 onPress: () => {
-                  // 전시 변경 취소
-                  setExhibition(prevId);
+                  setExhibition(prevId); // Revert selection
                   isProcessingChangeRef.current = false;
                 }
               }
@@ -214,17 +190,23 @@ export default function ExhibitionHeader() {
           );
           return;
         }
-      } else {
-        // 기록이 없으면 바로 업데이트
-        prevExhibitionIdRef.current = currentId;
       }
-    } else {
-      // 전시가 변경되지 않았으면 ref만 업데이트
-      prevExhibitionIdRef.current = currentId;
     }
-  }, [exhibitionId, user, exhibitions, getChatHistory, currentSessionId, age, aesthetic, router]);
+    prevExhibitionIdRef.current = currentId;
+  }, [exhibitionId, user, age, aesthetic, router, getChatHistory, currentSessionId, exhibitions, setExhibition]);
 
-  /** ===== 갤러리 변경 시도 로직 ===== */
+  /** ===== 실제 선택 반영 로직 (함수 분리) ===== */
+  const confirmSelection = (id: number) => {
+    // 갤러리만 선택 가능
+    setExhibition(undefined);
+    useChatStore.getState().setCurrentSessionId(null);
+    useChatStore.getState().clearAllChatHistories();
+    setSelectedGalleryId(id);
+    setGallery(id);
+    setShowList(false);
+  };
+
+  /** ===== 변경 시도 로직 ===== */
   const handleAttemptChange = (id: number) => {
     // 채팅 화면에서는 변경 불가
     if (isChatScreen) {
@@ -248,7 +230,7 @@ export default function ExhibitionHeader() {
             onPress: () => {
               useChatStore.getState().clearAllChatHistories();
               setExhibition(undefined);
-              confirmGallerySelection(id);
+              confirmSelection(id);
             },
           },
           {
@@ -285,7 +267,7 @@ export default function ExhibitionHeader() {
                   useChatStore.getState().clearAllChatHistories();
                   useChatStore.getState().setCurrentSessionId(null);
                 }
-                confirmGallerySelection(id);
+                confirmSelection(id);
               } catch (e) {
                 console.error("저장 실패:", e);
                 Alert.alert("오류", "기록 저장 중 문제가 발생했습니다.");
@@ -298,7 +280,7 @@ export default function ExhibitionHeader() {
             onPress: () => {
               useChatStore.getState().clearAllChatHistories();
               useChatStore.getState().setCurrentSessionId(null);
-              confirmGallerySelection(id);
+              confirmSelection(id);
             }
           },
           { text: "취소", style: "cancel" }
@@ -308,9 +290,8 @@ export default function ExhibitionHeader() {
     }
 
     /** Case C: 기록이 없거나 기타 상황 */
-    confirmGallerySelection(id);
+    confirmSelection(id);
   };
-  
 
 
   const headerTitle = galleries.find((g) => g.id === galleryId)?.name ?? "갤러리 선택";

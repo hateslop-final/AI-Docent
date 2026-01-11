@@ -11,11 +11,11 @@ export type Exhibition = {
   gallery_id: number;
   name: string;
   description: string;
-  info?: string;
+  info: string;
   start_date: string;
   end_date: string;
   is_now: boolean;
-  show?: boolean;
+  show: boolean;
   brochure?: string;
   location: string;
   admission_fee?: string;
@@ -52,7 +52,7 @@ export type ExhibitionFormData = {
   gallery_id: number;
   name: string;
   description: string;
-  info?: string;
+  info: string;
   start_date: string;
   end_date: string;
   is_now: boolean;

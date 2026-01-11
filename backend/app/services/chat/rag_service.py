@@ -7,13 +7,9 @@ import os
 from typing import Optional
 from enum import Enum
 from pathlib import Path
-from dotenv import load_dotenv
 from app.db.supabase import supabase
 from app.core.config import settings
 import openai
-
-# .env 파일 로드 (fallback)
-load_dotenv(Path("/backend/app/.env.local"))
 
 
 class AgeGroup(Enum):

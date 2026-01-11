@@ -65,11 +65,7 @@ export default function GalleryScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Pressable
-          onPress={() => {
-            // Clear gallery when going back to allow re-selection
-            setGallery(undefined);
-            router.replace("/(onboarding)/aesthetic");
-          }}
+          onPress={() => router.back()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           style={{
             flexDirection: "row",
