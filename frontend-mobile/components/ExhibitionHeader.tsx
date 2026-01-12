@@ -81,6 +81,49 @@ export default function ExhibitionHeader() {
     return exhibitions.some((e) => e.id === exhibitionId);
   }, [exhibitions, exhibitionId]);
 
+  /** ===== 세션 변경 감지 및 자동 저장 ===== */
+  const prevSessionIdRef = useRef<number | null>(currentSessionId);
+  
+  useEffect(() => {
+    const prevSessionId = prevSessionIdRef.current;
+    const currentSessionId = useChatStore.getState().currentSessionId;
+    
+    // 세션이 변경되었고, 이전 세션이 있고, 로그인한 사용자인 경우 자동 저장
+    if (
+      user &&
+      exhibitionId &&
+      prevSessionId !== null &&
+      prevSessionId !== currentSessionId &&
+      prevSessionId !== undefined
+    ) {
+      const currentMessages = getChatHistory(exhibitionId)?.messages || [];
+      
+      if (currentMessages.length > 0) {
+        const exhibitionName = exhibitions.find(e => e.id === exhibitionId)?.name || "알 수 없는 전시";
+        
+        (async () => {
+          try {
+            await ChatDatabaseService.saveFullHistory(
+              user.id,
+              exhibitionId,
+              currentMessages,
+              exhibitionName,
+              prevSessionId,
+              age ?? null,
+              aesthetic ?? null
+            );
+            console.log('[ExhibitionHeader] auto-saved session on session change', prevSessionId);
+          } catch (e) {
+            console.error('[ExhibitionHeader] auto-save session error:', e);
+            // 저장 실패해도 계속 진행
+          }
+        })();
+      }
+    }
+    
+    prevSessionIdRef.current = currentSessionId;
+  }, [currentSessionId, user, exhibitionId, age, aesthetic, getChatHistory, exhibitions]);
+
   /** ===== 전시 변경 감지 및 저장 여부 확인 ===== */
   const prevExhibitionIdRef = useRef<number | undefined>(exhibitionId);
   const isProcessingChangeRef = useRef(false);
@@ -97,117 +140,118 @@ export default function ExhibitionHeader() {
         return (h?.messages.length ?? 0) > 0;
       })();
 
-      if (hasHistoryNow) {
+      if (hasHistoryNow && user) {
+        // 로그인한 사용자는 자동 저장
         isProcessingChangeRef.current = true;
         const currentMessages = getChatHistory(prevId)?.messages || [];
         const currentExhibitionName = exhibitions.find(e => e.id === prevId)?.name || "알 수 없는 전시";
 
-        if (!user) {
-          Alert.alert(
-            "기록 저장 안내",
-            "로그인을 하시면 채팅 기록을 저장하실 수 있습니다.",
-            [
-              {
-                text: "그냥 변경",
-                style: "destructive",
-                onPress: () => {
-                  useChatStore.getState().clearAllChatHistories();
-                  useChatStore.getState().setCurrentSessionId(null);
-                  isProcessingChangeRef.current = false;
-                  prevExhibitionIdRef.current = currentId;
-                },
-              },
-              {
-                text: "로그인하기",
-                onPress: () => {
-                  setExhibition(prevId); // Revert selection
-                  isProcessingChangeRef.current = false;
+        (async () => {
+          try {
+            await ChatDatabaseService.saveFullHistory(
+              user.id,
+              prevId,
+              currentMessages,
+              currentExhibitionName,
+              currentSessionId,
+              age ?? null,
+              aesthetic ?? null
+            );
+            console.log('[ExhibitionHeader] auto-saved session on exhibition change', prevId);
+          } catch (e) {
+            console.error('[ExhibitionHeader] auto-save error:', e);
+            // 저장 실패해도 계속 진행
+          } finally {
+            useChatStore.getState().clearAllChatHistories();
+            useChatStore.getState().setCurrentSessionId(null);
+            isProcessingChangeRef.current = false;
+            prevExhibitionIdRef.current = currentId;
+          }
+        })();
+        return;
+      } else if (hasHistoryNow && !user) {
+        // 비로그인 사용자는 저장 여부 확인
+        isProcessingChangeRef.current = true;
+        // prevExhibitionIdRef를 먼저 업데이트하여 재실행 방지
+        prevExhibitionIdRef.current = currentId;
+        
+        // 즉시 Alert 표시
+        Alert.alert(
+          "기록 저장",
+          "지금까지의 대화 내용을 저장하시겠습니까?",
+          [
+            {
+              text: "로그인하여 저장",
+              onPress: () => {
+                // 즉시 상태 업데이트
+                prevExhibitionIdRef.current = prevId;
+                isProcessingChangeRef.current = false;
+                setExhibition(prevId);
+                // 라우팅은 약간의 지연 후
+                requestAnimationFrame(() => {
                   router.push("/mypage");
-                },
-              },
-              {
-                text: "취소",
-                style: "cancel",
-                onPress: () => {
-                  setExhibition(prevId); // Revert selection
-                  isProcessingChangeRef.current = false;
-                }
+                });
               }
-            ]
-          );
-          return;
-        }
-
-        if (user) {
-          Alert.alert(
-            "기록 저장",
-            "이 전시의 모든 대화 내용을 저장하시겠습니까?",
-            [
-              {
-                text: "저장 후 변경",
-                onPress: async () => {
-                  try {
-                    await ChatDatabaseService.saveFullHistory(
-                      user.id,
-                      prevId,
-                      currentMessages,
-                      currentExhibitionName,
-                      currentSessionId,
-                      age ?? null,
-                      aesthetic ?? null
-                    );
-                    useChatStore.getState().clearAllChatHistories();
-                    useChatStore.getState().setCurrentSessionId(null);
-                    isProcessingChangeRef.current = false;
-                    prevExhibitionIdRef.current = currentId;
-                  } catch (e) {
-                    console.error("저장 실패:", e);
-                    Alert.alert("오류", "기록 저장 중 문제가 발생했습니다.");
-                    setExhibition(prevId); // Revert selection
-                    isProcessingChangeRef.current = false;
-                  }
-                }
-              },
-              {
-                text: "저장 안 함",
-                style: "destructive",
-                onPress: () => {
-                  useChatStore.getState().clearAllChatHistories();
-                  useChatStore.getState().setCurrentSessionId(null);
-                  isProcessingChangeRef.current = false;
-                  prevExhibitionIdRef.current = currentId;
-                }
-              },
-              {
-                text: "취소",
-                style: "cancel",
-                onPress: () => {
-                  setExhibition(prevId); // Revert selection
-                  isProcessingChangeRef.current = false;
-                }
+            },
+            {
+              text: "저장 안 함",
+              style: "destructive",
+              onPress: () => {
+                // 즉시 상태 업데이트 및 세션 초기화
+                prevExhibitionIdRef.current = currentId;
+                isProcessingChangeRef.current = false;
+                useChatStore.getState().clearAllChatHistories();
+                useChatStore.getState().setCurrentSessionId(null);
               }
-            ]
-          );
-          return;
-        }
+            },
+            {
+              text: "취소",
+              style: "cancel",
+              onPress: () => {
+                // Alert는 자동으로 닫히므로 상태만 업데이트
+                prevExhibitionIdRef.current = prevId;
+                isProcessingChangeRef.current = false;
+                // setExhibition은 다음 틱에 실행하여 Alert가 먼저 닫히도록 함
+                setTimeout(() => {
+                  setExhibition(prevId);
+                }, 100);
+              }
+            }
+          ],
+          {
+            cancelable: true,
+            onDismiss: () => {
+              // Alert가 외부에서 닫힌 경우 (예: 뒤로가기)
+              prevExhibitionIdRef.current = prevId;
+              isProcessingChangeRef.current = false;
+              setExhibition(prevId);
+            }
+          }
+        );
+        return;
+      } else if (!hasHistoryNow) {
+        // 기록이 없어도 세션 ID는 초기화
+        useChatStore.getState().setCurrentSessionId(null);
+        prevExhibitionIdRef.current = currentId;
+        return;
       }
     }
     prevExhibitionIdRef.current = currentId;
-  }, [exhibitionId, user, age, aesthetic, router, getChatHistory, currentSessionId, exhibitions, setExhibition]);
+  }, [exhibitionId, user, age, aesthetic, getChatHistory, currentSessionId, exhibitions, setExhibition]);
 
   /** ===== 실제 선택 반영 로직 (함수 분리) ===== */
   const confirmSelection = (id: number) => {
     // 갤러리만 선택 가능
-    setExhibition(undefined);
-    useChatStore.getState().setCurrentSessionId(null);
-    useChatStore.getState().clearAllChatHistories();
-    setSelectedGalleryId(id);
-    setGallery(id);
+      setExhibition(undefined);
+      useChatStore.getState().setCurrentSessionId(null);
+      useChatStore.getState().clearAllChatHistories();
+      setSelectedGalleryId(id);
+      setGallery(id);
     setShowList(false);
   };
 
   /** ===== 변경 시도 로직 ===== */
-  const handleAttemptChange = (id: number) => {
+  const handleAttemptChange = async (id: number) => {
     // 채팅 화면에서는 변경 불가
     if (isChatScreen) {
       return;
@@ -219,59 +263,18 @@ export default function ExhibitionHeader() {
   
     // 현재 전시의 이름을 찾기 (저장 시 title로 사용)
     const currentExhibitionName = exhibitions.find(e => e.id === exhibitionId)?.name || "알 수 없는 전시";
-    if (!user && hasHistoryNow) {
-      Alert.alert(
-        "기록 저장 안내",
-        "로그인을 하시면 채팅 기록을 저장하실 수 있습니다.",
-        [
-          {
-            text: "그냥 변경",
-            style: "destructive",
-            onPress: () => {
-              useChatStore.getState().clearAllChatHistories();
-              setExhibition(undefined);
-              confirmSelection(id);
-            },
-          },
-          {
-            text: "로그인하기",
-            onPress: () => {
-              setShowList(false);
-              router.push("/mypage");
-            },
-          },
-          { text: "취소", style: "cancel" }
-        ]
-      );
-      return;
-    } 
-    if (user && hasHistoryNow) {
+    
+    // 비로그인 사용자이고 기록이 있으면 저장 여부 확인
+    if (!user && hasHistoryNow && exhibitionId) {
       Alert.alert(
         "기록 저장",
         "지금까지의 대화 내용을 저장하시겠습니까?",
         [
           {
-            text: "저장 후 변경",
-            onPress: async () => {
-              try {
-                if (exhibitionId) {
-                  await ChatDatabaseService.saveFullHistory(
-                    user.id,
-                    exhibitionId,
-                    currentMessages,
-                    currentExhibitionName,
-                    currentSessionId,
-                    age ?? null,
-                    aesthetic ?? null
-                  );
-                  useChatStore.getState().clearAllChatHistories();
-                  useChatStore.getState().setCurrentSessionId(null);
-                }
-                confirmSelection(id);
-              } catch (e) {
-                console.error("저장 실패:", e);
-                Alert.alert("오류", "기록 저장 중 문제가 발생했습니다.");
-              }
+            text: "로그인하여 저장",
+            onPress: () => {
+              setShowList(false);
+              router.push("/mypage");
             }
           },
           {
@@ -283,13 +286,40 @@ export default function ExhibitionHeader() {
               confirmSelection(id);
             }
           },
-          { text: "취소", style: "cancel" }
+          {
+            text: "취소",
+            style: "cancel",
+            onPress: () => {
+              setShowList(false);
+            }
+          }
         ]
       );
       return;
     }
-
-    /** Case C: 기록이 없거나 기타 상황 */
+    
+    // 로그인한 사용자이고 기록이 있으면 자동 저장
+    if (user && hasHistoryNow && exhibitionId) {
+      try {
+        await ChatDatabaseService.saveFullHistory(
+          user.id,
+          exhibitionId,
+          currentMessages,
+          currentExhibitionName,
+          currentSessionId,
+          age ?? null,
+          aesthetic ?? null
+        );
+        console.log('[ExhibitionHeader] auto-saved session on gallery change', exhibitionId);
+      } catch (e) {
+        console.error('[ExhibitionHeader] auto-save error:', e);
+        // 저장 실패해도 계속 진행
+      }
+    }
+    
+    // 히스토리 정리 후 변경
+    useChatStore.getState().clearAllChatHistories();
+    useChatStore.getState().setCurrentSessionId(null);
     confirmSelection(id);
   };
 
@@ -350,14 +380,14 @@ export default function ExhibitionHeader() {
           <View>
             <ScrollView style={{ maxHeight: 250 }}>
               {galleries.map((g) => (
-                <Pressable
-                  key={g.id}
+                    <Pressable
+                      key={g.id}
                   onPress={() => handleAttemptChange(g.id)}
-                  style={{ padding: 16, backgroundColor: selectedGalleryId === g.id ? "#f0f7ff" : "#fff" }}
-                >
-                  <Text>{g.name}</Text>
-                </Pressable>
-              ))}
+                      style={{ padding: 16, backgroundColor: selectedGalleryId === g.id ? "#f0f7ff" : "#fff" }}
+                    >
+                      <Text>{g.name}</Text>
+                    </Pressable>
+                  ))}
             </ScrollView>
           </View>
         )}

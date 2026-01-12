@@ -1,4 +1,4 @@
-import { Alert, Image, Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { Alert, Image, Platform, Pressable, ScrollView, Text, View, TouchableWithoutFeedback, Keyboard } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useMemo, useState } from "react";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -49,7 +49,6 @@ export default function ChatScreen() {
   );
   const addMessage = useChatStore((s) => s.addMessage);
   const setChatHistory = useChatStore((s) => s.setChatHistory);
-  const clearChatHistory = useChatStore((s) => s.clearChatHistory);
   const currentSessionId = useChatStore((s) => s.currentSessionId);
 
   /** ===== 로컬 UI 상태 ===== */
@@ -87,17 +86,17 @@ export default function ChatScreen() {
     return exhibitions.find((e) => e.id === exhibitionId) || null;
   }, [exhibitionId, exhibitions]);
 
-  // 현재 갤러리와 전시명 로그 출력
-  useEffect(() => {
-    if (currentGallery || currentExhibition) {
-      console.log("[ChatScreen] 현재 선택된 정보:", {
-        갤러리: currentGallery?.name || "없음",
-        전시: currentExhibition?.name || "없음",
-        galleryId,
-        exhibitionId,
-      });
-    }
-  }, [currentGallery, currentExhibition, galleryId, exhibitionId]);
+  // 현재 갤러리와 전시명 로그 출력 (디버깅용 - 필요시 주석 해제)
+  // useEffect(() => {
+  //   if (currentGallery || currentExhibition) {
+  //     console.log("[ChatScreen] 현재 선택된 정보:", {
+  //       갤러리: currentGallery?.name || "없음",
+  //       전시: currentExhibition?.name || "없음",
+  //       galleryId,
+  //       exhibitionId,
+  //     });
+  //   }
+  // }, [currentGallery, currentExhibition, galleryId, exhibitionId]);
 
   // 과거 전시인지 확인
   const isPastExhibition = useMemo(() => {
@@ -131,31 +130,26 @@ export default function ChatScreen() {
       : undefined;
   }, [params.artworkId, messages]);
 
-  /** ======================================================
-   *  1️⃣ 전시 변경 처리 (비로그인 시 히스토리 삭제)
-   * ====================================================== */
+  /** ===== 전시 변경 시 로컬 UI 상태만 초기화 ===== */
   useEffect(() => {
     const prev = prevExhibitionIdRef.current;
     if (prev !== undefined && prev !== exhibitionId) {
-      if (!isLoggedIn) {
-        clearChatHistory(prev);
-        console.log(`[ChatScreen] cleared chat history for prev exhibition=${prev} due to exhibition change and not logged in`);
-      }
+      // ExhibitionHeader에서 히스토리/세션 초기화는 처리하므로 여기서는 UI만 초기화
       setMessage("");
-      setSessionTitle(null); // 전시 변경 시 세션 제목 초기화
+      setSessionTitle(null);
       prevArtworkIdRef.current = undefined;
     }
     prevExhibitionIdRef.current = exhibitionId;
-  }, [exhibitionId, isLoggedIn]);
+  }, [exhibitionId]);
 
-  // DEBUG: log messages whenever exhibitionId or messages change
-  useEffect(() => {
-    try {
-      console.log(`[ChatScreen] exhibitionId=${exhibitionId}, messages count=${messages.length}`, JSON.parse(JSON.stringify(messages)));
-    } catch (e) {
-      console.log('[ChatScreen] failed to stringify messages', e, `count=${messages.length}`);
-    }
-  }, [exhibitionId, messages]);
+  // DEBUG: log messages whenever exhibitionId or messages change (주석 처리 - 중복 실행 방지)
+  // useEffect(() => {
+  //   try {
+  //     console.log(`[ChatScreen] exhibitionId=${exhibitionId}, messages count=${messages.length}`, JSON.parse(JSON.stringify(messages)));
+  //   } catch (e) {
+  //     console.log('[ChatScreen] failed to stringify messages', e, `count=${messages.length}`);
+  //   }
+  // }, [exhibitionId, messages]);
 
   /** ===== 세션 제목 로드 ===== */
   useEffect(() => {
@@ -285,7 +279,7 @@ export default function ChatScreen() {
       router.push({ pathname: "/past" as any, params: { exhibitionId: String(exhibitionId) } });
     } else {
       // 현재 전시면 카메라 화면으로 이동
-      router.push({ pathname: "/camera", params: { exhibitionId: String(exhibitionId) } });
+    router.push({ pathname: "/camera", params: { exhibitionId: String(exhibitionId) } });
     }
   };
 
@@ -301,7 +295,7 @@ export default function ChatScreen() {
       Alert.alert("오류", "온보딩 설정을 완료해주세요.");
       return;
     }
-  
+
     const userMsg: Message = {
       id: `user-${Date.now()}`,
       text: message.trim(),
@@ -312,11 +306,11 @@ export default function ChatScreen() {
       artworkTitle: params.artworkTitle,
       artworkImage: params.artworkImage,
     };
-  
+
     addMessage(exhibitionId, userMsg);
     setMessage("");
     setIsLoading(true);
-  
+
     try {
       // 작품이 선택되지 않았으면 artwork_id 없이 전송
       const res = await ChatbotService.askQuestion({
@@ -325,7 +319,7 @@ export default function ChatScreen() {
         age_group: age as any,
         expertise_level: aesthetic as any,
       });
-  
+
       // ✅ 문단 분리 (이전 코드 그대로)
       const paragraphs = res.answer
         .split(/\n\s*\n/)
@@ -333,11 +327,11 @@ export default function ChatScreen() {
         .filter((p) => p.length > 0);
   
       if (paragraphs.length <= 1) {
-        addMessage(exhibitionId, {
-          id: `bot-${Date.now()}`,
-          text: res.answer,
-          isUser: false,
-          timestamp: new Date(),
+      addMessage(exhibitionId, {
+        id: `bot-${Date.now()}`,
+        text: res.answer,
+        isUser: false,
+        timestamp: new Date(),
           exhibitionId,
           artworkId: currentArtworkId,
         });
@@ -352,8 +346,8 @@ export default function ChatScreen() {
               isUser: false,
               timestamp: new Date(baseTimestamp + index * 800),
               exhibitionId,
-              artworkId: currentArtworkId,
-            });
+        artworkId: currentArtworkId,
+      });
   
             // ✅ 스크롤 보정
             setTimeout(() => {
@@ -414,11 +408,14 @@ export default function ChatScreen() {
         )}
 
         {(currentArtworkId || messages.length > 0) ? (
-          <ScrollView
-            ref={scrollViewRef}
-            contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
-            style={{ marginBottom: 104 }}
-          >
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <ScrollView
+              ref={scrollViewRef}
+              contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
+              style={{ marginBottom: 104 }}
+              keyboardShouldPersistTaps="handled"
+              onScrollBeginDrag={Keyboard.dismiss}
+            >
             {messages.map((msg, idx) => {
               const prev = idx > 0 ? messages[idx - 1] : null;
               const showImage =
@@ -460,6 +457,7 @@ export default function ChatScreen() {
               );
             })}
           </ScrollView>
+          </TouchableWithoutFeedback>
         ) : (
           // When a gallery is selected but no exhibition is chosen, prompt user to
           // select an exhibition and disable camera/chat inputs.
@@ -470,26 +468,28 @@ export default function ChatScreen() {
               <Text style={{ marginTop: 8, color: "#666" }}>상단에서 전시를 선택하면 채팅과 카메라 기능을 사용할 수 있습니다.</Text>
             </View>
           ) : (
-            <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-              {isPastExhibition ? (
-                <>
-                  <MaterialIcons name="image-search" size={48} color="#007AFF" />
-                  <Text style={{ marginTop: 12 }}>작품을 검색해주세요</Text>
-                </>
-              ) : (
-                <>
-                  <MaterialIcons name="camera-alt" size={48} color="#007AFF" />
-                  <Text style={{ marginTop: 12 }}>작품을 촬영해주세요</Text>
-                </>
-              )}
-            </View>
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+              <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+                {isPastExhibition ? (
+                  <>
+                    <MaterialIcons name="image-search" size={48} color="#007AFF" />
+                    <Text style={{ marginTop: 12 }}>작품을 검색해주세요</Text>
+                  </>
+                ) : (
+                  <>
+                <MaterialIcons name="camera-alt" size={48} color="#007AFF" />
+                <Text style={{ marginTop: 12 }}>작품을 촬영해주세요</Text>
+                  </>
+                )}
+              </View>
+            </TouchableWithoutFeedback>
           )
         )}
 
         {/* 입력 */}
         <ChatInput
           message={message}
-          onChangeText={setMessage}
+            onChangeText={setMessage}
           onSend={handleSendMessage}
           onCameraPress={handleCameraPress}
           exhibitionId={exhibitionId}
@@ -504,150 +504,46 @@ export default function ChatScreen() {
           }
         />
         <SessionListModal
-          // Only allow the modal to be visible when an exhibition is selected.
-          visible={showSessions && !!exhibitionId}
+          // Only allow the modal to be visible when logged in and an exhibition is selected.
+          visible={showSessions && !!exhibitionId && isLoggedIn}
           exhibitionId={exhibitionId}
           onClose={() => setShowSessions(false)}
           onSelectSession={async (sessionId) => {
             try {
               if (!exhibitionId) return;
               
-              // 같은 전시 내 세션 변경 시 현재 세션 저장 여부 확인
-              const prevSessionId = currentSessionId;
-              const currentMessages = messages;
-              
-              if (user && prevSessionId && currentMessages.length > 0 && prevSessionId !== sessionId) {
-                const exhibitionName = exhibitions.find(e => e.id === exhibitionId)?.name || "알 수 없는 전시";
-                
-                Alert.alert(
-                  "세션 저장",
-                  "현재 세션을 저장하시겠습니까?",
-                  [
-                    {
-                      text: "저장 후 변경",
-                      onPress: async () => {
-                        try {
-                          await ChatDatabaseService.saveFullHistory(
-                            user.id,
-                            exhibitionId,
-                            currentMessages,
-                            sessionTitle || exhibitionName,
-                            prevSessionId,
-                            age ?? null,
-                            aesthetic ?? null
-                          );
-                          console.log('[ChatScreen] saved session', prevSessionId);
-                          
-                          setShowSessions(false);
-                          const rows = await ChatDatabaseService.loadSessionMessages(sessionId);
-                          setChatHistory(exhibitionId, rows);
-                          useChatStore.getState().setCurrentSessionId(sessionId);
-                          const sessionInfo = await ChatDatabaseService.getSessionInfo(sessionId);
-                          if (sessionInfo) {
-                            setSessionTitle(sessionInfo.title || `세션 ${new Date(sessionInfo.created_at).toLocaleString()}`);
-                          }
-                        } catch (e) {
-                          console.log('[ChatScreen] save session error', e);
-                          Alert.alert("오류", "세션 저장 중 문제가 발생했습니다.");
-                        }
-                      }
-                    },
-                    {
-                      text: "저장 안 함",
-                      style: "destructive",
-                      onPress: async () => {
-                        setShowSessions(false);
-                        const rows = await ChatDatabaseService.loadSessionMessages(sessionId);
-                        setChatHistory(exhibitionId, rows);
-                        useChatStore.getState().setCurrentSessionId(sessionId);
-                        const sessionInfo = await ChatDatabaseService.getSessionInfo(sessionId);
-                        if (sessionInfo) {
-                          setSessionTitle(sessionInfo.title || `세션 ${new Date(sessionInfo.created_at).toLocaleString()}`);
-                        }
-                      }
-                    },
-                    {
-                      text: "취소",
-                      style: "cancel"
-                    }
-                  ]
-                );
-                return;
-              }
-              
-              setShowSessions(false);
-              const rows = await ChatDatabaseService.loadSessionMessages(sessionId);
-              setChatHistory(exhibitionId, rows);
+              // ExhibitionHeader에서 세션 변경 시 자동 저장 처리
+              // 1. 먼저 세션 ID를 변경하면 ExhibitionHeader가 현재 세션의 메시지를 저장함
+              // (메시지가 교체되기 전에 저장되도록)
               useChatStore.getState().setCurrentSessionId(sessionId);
+              // 2. ExhibitionHeader가 저장하는 시간을 주기 위해 약간의 지연
+              await new Promise(resolve => setTimeout(resolve, 100));
+              // 3. DB에서 선택한 세션의 메시지 불러오기
+              const rows = await ChatDatabaseService.loadSessionMessages(sessionId);
+              // 4. 로컬 대화 기록에 불러온 메시지 설정 (이전 세션 메시지 대체)
+              setChatHistory(exhibitionId, rows);
+              setShowSessions(false);
               const sessionInfo = await ChatDatabaseService.getSessionInfo(sessionId);
               if (sessionInfo) {
                 setSessionTitle(sessionInfo.title || `세션 ${new Date(sessionInfo.created_at).toLocaleString()}`);
               }
             } catch (e) {
               console.log('[ChatScreen] loadSessionMessages error', e);
+              Alert.alert("오류", "세션 로드 중 문제가 발생했습니다.");
             }
           }}
           onCreateNew={async (sessionId) => {
             if (!exhibitionId) return;
             
-            // 같은 전시 내 새 세션 생성 시 현재 세션 저장 여부 확인
-            const prevSessionId = currentSessionId;
-            const currentMessages = messages;
-            
-            if (user && prevSessionId && currentMessages.length > 0) {
-              const exhibitionName = exhibitions.find(e => e.id === exhibitionId)?.name || "알 수 없는 전시";
-              
-              Alert.alert(
-                "세션 저장",
-                "현재 세션을 저장하시겠습니까?",
-                [
-                  {
-                    text: "저장 후 새 세션",
-                    onPress: async () => {
-                      try {
-                        await ChatDatabaseService.saveFullHistory(
-                          user.id,
-                          exhibitionId,
-                          currentMessages,
-                          sessionTitle || exhibitionName,
-                          prevSessionId,
-                          age ?? null,
-                          aesthetic ?? null
-                        );
-                        console.log('[ChatScreen] saved session', prevSessionId);
-                        
-                        setShowSessions(false);
-                        setChatHistory(exhibitionId, []);
-                        useChatStore.getState().setCurrentSessionId(sessionId);
-                        setSessionTitle(null);
-                      } catch (e) {
-                        console.log('[ChatScreen] save session error', e);
-                        Alert.alert("오류", "세션 저장 중 문제가 발생했습니다.");
-                      }
-                    }
-                  },
-                  {
-                    text: "저장 안 함",
-                    style: "destructive",
-                    onPress: () => {
-                      setShowSessions(false);
-                      setChatHistory(exhibitionId, []);
-                      useChatStore.getState().setCurrentSessionId(sessionId);
-                      setSessionTitle(null);
-                    }
-                  },
-                  {
-                    text: "취소",
-                    style: "cancel"
-                  }
-                ]
-              );
-              return;
-            }
-            
-            setShowSessions(false);
-            setChatHistory(exhibitionId, []);
+            // ExhibitionHeader에서 세션 변경 시 자동 저장 처리
+            // 1. 먼저 세션 ID를 변경하면 ExhibitionHeader가 현재 세션의 메시지를 저장함
+            // (메시지가 클리어되기 전에 저장되도록)
             useChatStore.getState().setCurrentSessionId(sessionId);
+            // 2. ExhibitionHeader가 저장하는 시간을 주기 위해 약간의 지연
+            await new Promise(resolve => setTimeout(resolve, 100));
+            // 3. 로컬 대화 기록 초기화
+            setChatHistory(exhibitionId, []);
+            setShowSessions(false);
             setSessionTitle(null);
           }}
         />

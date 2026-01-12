@@ -358,14 +358,14 @@ export default function ExhibitionsPage() {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.is_now}
-                    onChange={(e) =>
-                      setFormData({ ...formData, is_now: e.target.checked })
-                    }
-                  />
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={formData.is_now}
+                  onChange={(e) =>
+                    setFormData({ ...formData, is_now: e.target.checked })
+                  }
+                />
                   <label>현재 진행 중</label>
                 </div>
                 <div className="flex items-center gap-2">

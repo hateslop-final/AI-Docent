@@ -66,6 +66,16 @@ export default function SessionListModal({
   const handleCreate = async () => {
     if (!user || !exhibitionId) return;
 
+    // 세션 개수 제한 확인 (3개까지)
+    if (sessions.length >= 3) {
+      Alert.alert(
+        '세션 개수 제한',
+        '전시당 최대 3개의 세션만 생성할 수 있습니다.\n기존 세션을 삭제한 후 새로 생성해주세요.',
+        [{ text: '확인' }]
+      );
+      return;
+    }
+
     setLoading(true);
     try {
       const r = await ChatDatabaseService.createSession(

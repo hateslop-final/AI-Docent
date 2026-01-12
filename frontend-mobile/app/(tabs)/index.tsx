@@ -137,31 +137,31 @@ export default function HomeScreen() {
         }}>
           <Pressable
             onPress={() => setActiveTab("current")}
-            style={{
+              style={{
               flex: 1,
               paddingVertical: 12,
               borderRadius: 8,
               backgroundColor: activeTab === "current" ? "#fff" : "transparent",
-              alignItems: "center",
-            }}
-          >
+                    alignItems: "center",
+                  }}
+                >
             <Text style={{
               fontSize: 15,
               fontWeight: activeTab === "current" ? "600" : "500",
               color: activeTab === "current" ? "#000" : "#666",
             }}>
               현재 전시 ({currentExhibitions.length})
-            </Text>
+                  </Text>
           </Pressable>
-          <Pressable
+                <Pressable
             onPress={() => setActiveTab("past")}
-            style={{
+                  style={{
               flex: 1,
               paddingVertical: 12,
               borderRadius: 8,
               backgroundColor: activeTab === "past" ? "#fff" : "transparent",
-              alignItems: "center",
-            }}
+                    alignItems: "center",
+                  }}
           >
             <Text style={{
               fontSize: 15,
@@ -169,8 +169,8 @@ export default function HomeScreen() {
               color: activeTab === "past" ? "#000" : "#666",
             }}>
               과거 전시 ({pastExhibitions.length})
-            </Text>
-          </Pressable>
+                  </Text>
+                </Pressable>
         </View>
 
         {/* 전시 그리드 (2x2) */}
@@ -236,8 +236,8 @@ export default function HomeScreen() {
             <MaterialIcons name="event-busy" size={48} color="#ccc" />
             <Text style={{ fontSize: 16, color: "#666", marginTop: 12 }}>
               {activeTab === "current" ? "진행 중인 전시가 없습니다" : "과거 전시가 없습니다"}
-            </Text>
-          </View>
+              </Text>
+            </View>
         )}
       </ScrollView>
     </SafeAreaView>

@@ -168,8 +168,8 @@ export default function MyPageScreen() {
                   </Text>
                   <Pressable onPress={() => router.push("/mypage/login")}>
                     <Text style={{ fontSize: 14, color: "#007AFF" }}>
-                      로그인하여 더 많은 기능을 이용하세요
-                    </Text>
+                    로그인하여 더 많은 기능을 이용하세요
+                  </Text>
                   </Pressable>
                 </View>
               </View>
@@ -376,7 +376,7 @@ export default function MyPageScreen() {
                 </Text>
                 <MaterialIcons name="chevron-right" size={24} color="#ccc" />
               </Pressable>
-
+              
               <Pressable
                 onPress={() => router.push("/mypage/login")}
                 style={{
