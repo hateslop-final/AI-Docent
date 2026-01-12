@@ -49,6 +49,7 @@ export default function ChatScreen() {
   );
   const addMessage = useChatStore((s) => s.addMessage);
   const setChatHistory = useChatStore((s) => s.setChatHistory);
+  const clearChatHistory = useChatStore((s) => s.clearChatHistory);
   const currentSessionId = useChatStore((s) => s.currentSessionId);
 
   /** ===== 로컬 UI 상태 ===== */
@@ -508,6 +509,21 @@ export default function ChatScreen() {
           visible={showSessions && !!exhibitionId && isLoggedIn}
           exhibitionId={exhibitionId}
           onClose={() => setShowSessions(false)}
+          onDelete={async (deletedSessionId) => {
+            // 현재 활성 세션을 삭제한 경우 로컬 기록 초기화 및 새 세션 생성
+            if (currentSessionId === deletedSessionId && exhibitionId) {
+              console.log('[ChatScreen] 현재 활성 세션 삭제됨, 로컬 기록 초기화 및 새 세션 생성');
+              
+              // 로컬 대화 기록 초기화
+              clearChatHistory(exhibitionId);
+              
+              // 세션 ID 초기화
+              useChatStore.getState().setCurrentSessionId(null);
+              
+              // 세션 제목 초기화
+              setSessionTitle(null);
+            }
+          }}
           onSelectSession={async (sessionId) => {
             try {
               if (!exhibitionId) return;
@@ -515,13 +531,18 @@ export default function ChatScreen() {
               // ExhibitionHeader에서 세션 변경 시 자동 저장 처리
               // 1. 먼저 세션 ID를 변경하면 ExhibitionHeader가 현재 세션의 메시지를 저장함
               // (메시지가 교체되기 전에 저장되도록)
+              const prevSessionId = useChatStore.getState().currentSessionId;
               useChatStore.getState().setCurrentSessionId(sessionId);
+              
               // 2. ExhibitionHeader가 저장하는 시간을 주기 위해 약간의 지연
-              await new Promise(resolve => setTimeout(resolve, 100));
+              await new Promise(resolve => setTimeout(resolve, 200));
+              
               // 3. DB에서 선택한 세션의 메시지 불러오기
               const rows = await ChatDatabaseService.loadSessionMessages(sessionId);
+              
               // 4. 로컬 대화 기록에 불러온 메시지 설정 (이전 세션 메시지 대체)
               setChatHistory(exhibitionId, rows);
+              
               setShowSessions(false);
               const sessionInfo = await ChatDatabaseService.getSessionInfo(sessionId);
               if (sessionInfo) {

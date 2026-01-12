@@ -88,6 +88,14 @@ export default function ExhibitionHeader() {
     const prevSessionId = prevSessionIdRef.current;
     const currentSessionId = useChatStore.getState().currentSessionId;
     
+    console.log('[ExhibitionHeader] session change check:', {
+      prevSessionId,
+      currentSessionId,
+      hasUser: !!user,
+      exhibitionId,
+      willSave: user && exhibitionId && prevSessionId !== null && prevSessionId !== currentSessionId && prevSessionId !== undefined
+    });
+    
     // 세션이 변경되었고, 이전 세션이 있고, 로그인한 사용자인 경우 자동 저장
     if (
       user &&
@@ -97,6 +105,11 @@ export default function ExhibitionHeader() {
       prevSessionId !== undefined
     ) {
       const currentMessages = getChatHistory(exhibitionId)?.messages || [];
+      console.log('[ExhibitionHeader] saving session on change:', {
+        prevSessionId,
+        currentSessionId,
+        messageCount: currentMessages.length
+      });
       
       if (currentMessages.length > 0) {
         const exhibitionName = exhibitions.find(e => e.id === exhibitionId)?.name || "알 수 없는 전시";
@@ -112,9 +125,10 @@ export default function ExhibitionHeader() {
               age ?? null,
               aesthetic ?? null
             );
-            console.log('[ExhibitionHeader] auto-saved session on session change', prevSessionId);
+            console.log('[ExhibitionHeader] ✅ auto-saved session on session change', prevSessionId);
+            // 로컬 초기화는 chat.tsx에서 새 세션 메시지 로드 후 처리
           } catch (e) {
-            console.error('[ExhibitionHeader] auto-save session error:', e);
+            console.error('[ExhibitionHeader] ❌ auto-save session error:', e);
             // 저장 실패해도 계속 진행
           }
         })();
@@ -122,7 +136,7 @@ export default function ExhibitionHeader() {
     }
     
     prevSessionIdRef.current = currentSessionId;
-  }, [currentSessionId, user, exhibitionId, age, aesthetic, getChatHistory, exhibitions]);
+  }, [currentSessionId, user, exhibitionId, age, aesthetic, getChatHistory, exhibitions, clearChatHistory]);
 
   /** ===== 전시 변경 감지 및 저장 여부 확인 ===== */
   const prevExhibitionIdRef = useRef<number | undefined>(exhibitionId);

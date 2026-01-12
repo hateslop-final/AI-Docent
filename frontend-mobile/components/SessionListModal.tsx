@@ -3,6 +3,7 @@ import { Modal, Text, Pressable, FlatList, ActivityIndicator, View, Alert } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChatDatabaseService } from '@/services/chathistory_service';
 import { useAuth } from '@/store/auth.store';
+import { useChatStore } from '@/store/chat.store';
 
 type SessionRow = {
   id: number;
@@ -17,6 +18,7 @@ type Props = {
   onClose: () => void;
   onSelectSession: (sessionId: number) => void;
   onCreateNew: (sessionId: number) => void;
+  onDelete?: (sessionId: number) => void; // 삭제 시 콜백 추가
 };
 
 export default function SessionListModal({
@@ -25,8 +27,10 @@ export default function SessionListModal({
   onClose,
   onSelectSession,
   onCreateNew,
+  onDelete,
 }: Props) {
   const user = useAuth((s) => s.user);
+  const currentSessionId = useChatStore((s) => s.currentSessionId);
 
   const [loading, setLoading] = useState(false);
   const [sessions, setSessions] = useState<SessionRow[]>([]);
@@ -110,6 +114,11 @@ export default function SessionListModal({
               setSessions((prev) =>
                 prev.filter((s) => s.id !== sessionId)
               );
+              
+              // 삭제 콜백 호출 (현재 활성 세션인지 확인 및 처리)
+              if (onDelete) {
+                onDelete(sessionId);
+              }
             } catch (e: any) {
               console.log('[SessionListModal] deleteSession error', e);
               setError(e.message || '세션 삭제 실패');
@@ -219,20 +228,33 @@ export default function SessionListModal({
                   </Text>
                 </Pressable>
 
-                {/* 삭제 버튼 */}
-                <Pressable
-                  onPress={() => handleDelete(item.id)}
-                  style={{ padding: 8 }}
-                >
-                  <Text
-                    style={{
-                      color: 'red',
-                      fontWeight: '600',
-                    }}
+                {/* 삭제 버튼 - 현재 활성 세션은 삭제 불가 */}
+                {currentSessionId !== item.id ? (
+                  <Pressable
+                    onPress={() => handleDelete(item.id)}
+                    style={{ padding: 8 }}
                   >
-                    삭제
-                  </Text>
-                </Pressable>
+                    <Text
+                      style={{
+                        color: 'red',
+                        fontWeight: '600',
+                      }}
+                    >
+                      삭제
+                    </Text>
+                  </Pressable>
+                ) : (
+                  <View style={{ padding: 8 }}>
+                    <Text
+                      style={{
+                        color: '#ccc',
+                        fontWeight: '600',
+                      }}
+                    >
+                      현재 세션
+                    </Text>
+                  </View>
+                )}
               </View>
             )}
           />

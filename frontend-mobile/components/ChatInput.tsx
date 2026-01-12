@@ -1,7 +1,7 @@
-import { View, TextInput, Pressable, StyleSheet, Platform } from "react-native";
+import { View, TextInput, Pressable, StyleSheet, Platform, Animated } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Keyboard } from "react-native";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useLayoutEffect } from "react";
 
 interface ChatInputProps {
   message: string;
@@ -26,41 +26,88 @@ export default function ChatInput({
 }: ChatInputProps) {
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const floatingTabBarHeight = 92;
+  const bottomAnim = useRef(new Animated.Value(floatingTabBarHeight)).current;
+  const isInitialMountRef = useRef(true);
+  const hasSetInitialValueRef = useRef(false);
+
+  // 렌더링 전에 초기값 설정 (흔들림 방지)
+  useLayoutEffect(() => {
+    if (!hasSetInitialValueRef.current) {
+      bottomAnim.setValue(floatingTabBarHeight);
+      hasSetInitialValueRef.current = true;
+    }
+  }, []);
 
   useEffect(() => {
+    // 리스너 등록 전에 발생하는 키보드 이벤트 무시를 위한 플래그
+    let isListenerReady = false;
+    
+    // 리스너가 준비될 때까지 약간의 지연 (마운트 시 발생하는 이벤트 무시)
+    const readyTimer = setTimeout(() => {
+      isListenerReady = true;
+    }, 100);
+
     const showSubscription = Keyboard.addListener(
       Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
       (e) => {
+        if (!isListenerReady) return; // 리스너 준비 전 이벤트 무시
+        
         setIsKeyboardVisible(true);
         setKeyboardHeight(e.endCoordinates.height);
+        // 초기 마운트 시에는 애니메이션 없이 즉시 설정
+        if (isInitialMountRef.current) {
+          bottomAnim.setValue(e.endCoordinates.height);
+          isInitialMountRef.current = false;
+        } else {
+          Animated.timing(bottomAnim, {
+            toValue: e.endCoordinates.height,
+            duration: Platform.OS === "ios" ? 250 : 100,
+            useNativeDriver: false,
+          }).start();
+        }
       }
     );
     const hideSubscription = Keyboard.addListener(
       Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
       () => {
+        if (!isListenerReady) return; // 리스너 준비 전 이벤트 무시
+        
         setIsKeyboardVisible(false);
         setKeyboardHeight(0);
+        // 초기 마운트 시에는 애니메이션 없이 즉시 설정
+        if (isInitialMountRef.current) {
+          bottomAnim.setValue(floatingTabBarHeight);
+          isInitialMountRef.current = false;
+        } else {
+          Animated.timing(bottomAnim, {
+            toValue: floatingTabBarHeight,
+            duration: Platform.OS === "ios" ? 250 : 100,
+            useNativeDriver: false,
+          }).start();
+        }
       }
     );
 
+    // 컴포넌트가 마운트된 후 초기 마운트 플래그 해제 (약간의 지연 후)
+    const timer = setTimeout(() => {
+      isInitialMountRef.current = false;
+    }, 500);
+
     return () => {
+      clearTimeout(readyTimer);
+      clearTimeout(timer);
       showSubscription.remove();
       hideSubscription.remove();
     };
-  }, []);
-
-  // FloatingTabBar 높이 (64 + 28 marginBottom = 92)
-  const floatingTabBarHeight = 92;
-  const bottomOffset = isKeyboardVisible
-    ? keyboardHeight
-    : floatingTabBarHeight;
+  }, [bottomAnim, floatingTabBarHeight]);
 
   return (
-    <View
+    <Animated.View
       style={[
         styles.container,
         {
-          bottom: bottomOffset,
+          bottom: bottomAnim,
         },
         isKeyboardVisible && styles.containerWithKeyboard,
       ]}
@@ -112,7 +159,7 @@ export default function ChatInput({
       ) : (
         <View style={styles.sendButtonPlaceholder} />
       )}
-    </View>
+    </Animated.View>
   );
 }
 
