@@ -417,6 +417,7 @@ export default function ChatScreen() {
           <ScrollView
             ref={scrollViewRef}
             contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
+            style={{ marginBottom: 104 }}
           >
             {messages.map((msg, idx) => {
               const prev = idx > 0 ? messages[idx - 1] : null;
@@ -509,38 +510,75 @@ export default function ChatScreen() {
           onClose={() => setShowSessions(false)}
           onSelectSession={async (sessionId) => {
             try {
-              setShowSessions(false);
               if (!exhibitionId) return;
               
-              // 같은 전시 내 세션 변경 시 현재 세션 자동 저장 (로그인 사용자만)
+              // 같은 전시 내 세션 변경 시 현재 세션 저장 여부 확인
               const prevSessionId = currentSessionId;
               const currentMessages = messages;
               
               if (user && prevSessionId && currentMessages.length > 0 && prevSessionId !== sessionId) {
-                try {
-                  // 현재 세션 자동 저장 (백그라운드)
-                  const exhibitionName = exhibitions.find(e => e.id === exhibitionId)?.name || "알 수 없는 전시";
-                  await ChatDatabaseService.saveFullHistory(
-                    user.id,
-                    exhibitionId,
-                    currentMessages,
-                    sessionTitle || exhibitionName,
-                    prevSessionId,
-                    age ?? null,
-                    aesthetic ?? null
-                  );
-                  console.log('[ChatScreen] auto-saved session', prevSessionId);
-                } catch (e) {
-                  console.log('[ChatScreen] auto-save session error', e);
-                  // 자동 저장 실패해도 계속 진행
-                }
+                const exhibitionName = exhibitions.find(e => e.id === exhibitionId)?.name || "알 수 없는 전시";
+                
+                Alert.alert(
+                  "세션 저장",
+                  "현재 세션을 저장하시겠습니까?",
+                  [
+                    {
+                      text: "저장 후 변경",
+                      onPress: async () => {
+                        try {
+                          await ChatDatabaseService.saveFullHistory(
+                            user.id,
+                            exhibitionId,
+                            currentMessages,
+                            sessionTitle || exhibitionName,
+                            prevSessionId,
+                            age ?? null,
+                            aesthetic ?? null
+                          );
+                          console.log('[ChatScreen] saved session', prevSessionId);
+                          
+                          setShowSessions(false);
+                          const rows = await ChatDatabaseService.loadSessionMessages(sessionId);
+                          setChatHistory(exhibitionId, rows);
+                          useChatStore.getState().setCurrentSessionId(sessionId);
+                          const sessionInfo = await ChatDatabaseService.getSessionInfo(sessionId);
+                          if (sessionInfo) {
+                            setSessionTitle(sessionInfo.title || `세션 ${new Date(sessionInfo.created_at).toLocaleString()}`);
+                          }
+                        } catch (e) {
+                          console.log('[ChatScreen] save session error', e);
+                          Alert.alert("오류", "세션 저장 중 문제가 발생했습니다.");
+                        }
+                      }
+                    },
+                    {
+                      text: "저장 안 함",
+                      style: "destructive",
+                      onPress: async () => {
+                        setShowSessions(false);
+                        const rows = await ChatDatabaseService.loadSessionMessages(sessionId);
+                        setChatHistory(exhibitionId, rows);
+                        useChatStore.getState().setCurrentSessionId(sessionId);
+                        const sessionInfo = await ChatDatabaseService.getSessionInfo(sessionId);
+                        if (sessionInfo) {
+                          setSessionTitle(sessionInfo.title || `세션 ${new Date(sessionInfo.created_at).toLocaleString()}`);
+                        }
+                      }
+                    },
+                    {
+                      text: "취소",
+                      style: "cancel"
+                    }
+                  ]
+                );
+                return;
               }
               
+              setShowSessions(false);
               const rows = await ChatDatabaseService.loadSessionMessages(sessionId);
-              // Replace local history with loaded messages so UI shows them as a real chat
               setChatHistory(exhibitionId, rows);
               useChatStore.getState().setCurrentSessionId(sessionId);
-              // 세션 제목 로드
               const sessionInfo = await ChatDatabaseService.getSessionInfo(sessionId);
               if (sessionInfo) {
                 setSessionTitle(sessionInfo.title || `세션 ${new Date(sessionInfo.created_at).toLocaleString()}`);
@@ -550,13 +588,66 @@ export default function ChatScreen() {
             }
           }}
           onCreateNew={async (sessionId) => {
-            // A new session was created on the server — start with an empty local
-            // history for this exhibition so the user can begin chatting.
-            setShowSessions(false);
             if (!exhibitionId) return;
+            
+            // 같은 전시 내 새 세션 생성 시 현재 세션 저장 여부 확인
+            const prevSessionId = currentSessionId;
+            const currentMessages = messages;
+            
+            if (user && prevSessionId && currentMessages.length > 0) {
+              const exhibitionName = exhibitions.find(e => e.id === exhibitionId)?.name || "알 수 없는 전시";
+              
+              Alert.alert(
+                "세션 저장",
+                "현재 세션을 저장하시겠습니까?",
+                [
+                  {
+                    text: "저장 후 새 세션",
+                    onPress: async () => {
+                      try {
+                        await ChatDatabaseService.saveFullHistory(
+                          user.id,
+                          exhibitionId,
+                          currentMessages,
+                          sessionTitle || exhibitionName,
+                          prevSessionId,
+                          age ?? null,
+                          aesthetic ?? null
+                        );
+                        console.log('[ChatScreen] saved session', prevSessionId);
+                        
+                        setShowSessions(false);
+                        setChatHistory(exhibitionId, []);
+                        useChatStore.getState().setCurrentSessionId(sessionId);
+                        setSessionTitle(null);
+                      } catch (e) {
+                        console.log('[ChatScreen] save session error', e);
+                        Alert.alert("오류", "세션 저장 중 문제가 발생했습니다.");
+                      }
+                    }
+                  },
+                  {
+                    text: "저장 안 함",
+                    style: "destructive",
+                    onPress: () => {
+                      setShowSessions(false);
+                      setChatHistory(exhibitionId, []);
+                      useChatStore.getState().setCurrentSessionId(sessionId);
+                      setSessionTitle(null);
+                    }
+                  },
+                  {
+                    text: "취소",
+                    style: "cancel"
+                  }
+                ]
+              );
+              return;
+            }
+            
+            setShowSessions(false);
             setChatHistory(exhibitionId, []);
             useChatStore.getState().setCurrentSessionId(sessionId);
-            // 새 세션 생성 시 제목 초기화
             setSessionTitle(null);
           }}
         />

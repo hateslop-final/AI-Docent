@@ -1,8 +1,8 @@
-import { View, Text, Image, ScrollView, Pressable } from "react-native";
+import { View, Text, Image, ScrollView, Pressable, Modal } from "react-native";
 import { DEFAULT_PROFILE_IMAGE_URL } from "@/services/storage";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useAuth } from "@/store/auth.store";
 import { useAuthState } from "@/store/auth.store";
@@ -13,11 +13,21 @@ const AGE_OPTIONS = [
   { label: "성인", value: "adult" },
 ] as const;
 
+const AESTHETIC_OPTIONS = [
+  { key: "light", title: "가볍게", desc: "편하게 감상하고 싶어요" },
+  { key: "medium", title: "적당히", desc: "배경이 궁금해요" },
+  { key: "deep", title: "깊이 있게", desc: "맥락까지 알고 싶어요" },
+] as const;
+
 export default function MyPageScreen() {
   const router = useRouter();
   const { user, userProfile, signOut, initialize, initialized } = useAuth();
   const age = useOnboardingStore((s) => s.age);
   const aesthetic = useOnboardingStore((s) => s.aesthetic);
+  const setAge = useOnboardingStore((s) => s.setAge);
+  const setAesthetic = useOnboardingStore((s) => s.setAesthetic);
+  const [showAgeModal, setShowAgeModal] = useState(false);
+  const [showAestheticModal, setShowAestheticModal] = useState(false);
   
   useEffect(() => {
     if (!initialized) {
@@ -156,9 +166,11 @@ export default function MyPageScreen() {
                   <Text style={{ fontSize: 20, fontWeight: "700", color: "#1a1a1a", marginBottom: 4 }}>
                     게스트
                   </Text>
-                  <Text style={{ fontSize: 14, color: "#666" }}>
-                    로그인하여 더 많은 기능을 이용하세요
-                  </Text>
+                  <Pressable onPress={() => router.push("/mypage/login")}>
+                    <Text style={{ fontSize: 14, color: "#007AFF" }}>
+                      로그인하여 더 많은 기능을 이용하세요
+                    </Text>
+                  </Pressable>
                 </View>
               </View>
 
@@ -173,23 +185,31 @@ export default function MyPageScreen() {
                   </Text>
                   
                   {age && (
-                    <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
-                      <Text style={{ fontSize: 14, color: "#666", marginLeft: 8 }}>
+                    <Pressable 
+                      onPress={() => setShowAgeModal(true)}
+                      style={{ flexDirection: "row", alignItems: "center", marginBottom: 12, paddingVertical: 4 }}
+                    >
+                      <Text style={{ fontSize: 14, color: "#666", marginLeft: 8, flex: 1 }}>
                         연령대: <Text style={{ fontWeight: "600", color: "#1a1a1a" }}>
                           {AGE_OPTIONS.find(opt => opt.value === age)?.label || age}
                         </Text>
                       </Text>
-                    </View>
+                      <MaterialIcons name="edit" size={16} color="#666" />
+                    </Pressable>
                   )}
                   
                   {aesthetic && (
-                    <View style={{ flexDirection: "row", alignItems: "center" }}>
-                      <Text style={{ fontSize: 14, color: "#666", marginLeft: 8 }}>
+                    <Pressable 
+                      onPress={() => setShowAestheticModal(true)}
+                      style={{ flexDirection: "row", alignItems: "center", paddingVertical: 4 }}
+                    >
+                      <Text style={{ fontSize: 14, color: "#666", marginLeft: 8, flex: 1 }}>
                         설명 수준: <Text style={{ fontWeight: "600", color: "#1a1a1a" }}>
                           {getAestheticText(aesthetic)}
                         </Text>
                       </Text>
-                    </View>
+                      <MaterialIcons name="edit" size={16} color="#666" />
+                    </Pressable>
                   )}
                 </View>
               )}
@@ -325,6 +345,39 @@ export default function MyPageScreen() {
               )}
               
               <Pressable
+                onPress={() => router.push("/mypage/features")}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  padding: 18,
+                  backgroundColor: "#fff",
+                  borderRadius: 12,
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.03,
+                  shadowRadius: 4,
+                  elevation: 1,
+                  marginBottom: 8,
+                }}
+              >
+                <View style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  backgroundColor: "#f5f5f5",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginRight: 12,
+                }}>
+                  <MaterialIcons name="info-outline" size={20} color="#000" />
+                </View>
+                <Text style={{ fontSize: 16, fontWeight: "500", color: "#1a1a1a", flex: 1 }}>
+                  앱 기능 안내
+                </Text>
+                <MaterialIcons name="chevron-right" size={24} color="#ccc" />
+              </Pressable>
+
+              <Pressable
                 onPress={() => router.push("/mypage/login")}
                 style={{
                   flexDirection: "row",
@@ -348,6 +401,89 @@ export default function MyPageScreen() {
             </>
           )}
         </View>
+
+        {/* 연령대 선택 모달 */}
+        <Modal
+          visible={showAgeModal}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowAgeModal(false)}
+        >
+          <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }}>
+            <View style={{ backgroundColor: "#fff", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24 }}>
+              <Text style={{ fontSize: 20, fontWeight: "700", marginBottom: 24 }}>연령대 선택</Text>
+              {AGE_OPTIONS.map((option) => (
+                <Pressable
+                  key={option.value}
+                  onPress={() => {
+                    setAge(option.value);
+                    setShowAgeModal(false);
+                  }}
+                  style={{
+                    padding: 16,
+                    backgroundColor: age === option.value ? "#f0f7ff" : "#f5f5f5",
+                    borderRadius: 12,
+                    marginBottom: 12,
+                    borderWidth: age === option.value ? 2 : 0,
+                    borderColor: "#007AFF",
+                  }}
+                >
+                  <Text style={{ fontSize: 16, fontWeight: age === option.value ? "600" : "500", color: "#1a1a1a" }}>
+                    {option.label}
+                  </Text>
+                </Pressable>
+              ))}
+              <Pressable
+                onPress={() => setShowAgeModal(false)}
+                style={{ marginTop: 12, padding: 16, alignItems: "center" }}
+              >
+                <Text style={{ fontSize: 16, color: "#666" }}>취소</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+
+        {/* 설명 수준 선택 모달 */}
+        <Modal
+          visible={showAestheticModal}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowAestheticModal(false)}
+        >
+          <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }}>
+            <View style={{ backgroundColor: "#fff", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24 }}>
+              <Text style={{ fontSize: 20, fontWeight: "700", marginBottom: 24 }}>설명 수준 선택</Text>
+              {AESTHETIC_OPTIONS.map((option) => (
+                <Pressable
+                  key={option.key}
+                  onPress={() => {
+                    setAesthetic(option.key);
+                    setShowAestheticModal(false);
+                  }}
+                  style={{
+                    padding: 16,
+                    backgroundColor: aesthetic === option.key ? "#f0f7ff" : "#f5f5f5",
+                    borderRadius: 12,
+                    marginBottom: 12,
+                    borderWidth: aesthetic === option.key ? 2 : 0,
+                    borderColor: "#007AFF",
+                  }}
+                >
+                  <Text style={{ fontSize: 16, fontWeight: aesthetic === option.key ? "600" : "500", color: "#1a1a1a", marginBottom: 4 }}>
+                    {option.title}
+                  </Text>
+                  <Text style={{ fontSize: 14, color: "#666" }}>{option.desc}</Text>
+                </Pressable>
+              ))}
+              <Pressable
+                onPress={() => setShowAestheticModal(false)}
+                style={{ marginTop: 12, padding: 16, alignItems: "center" }}
+              >
+                <Text style={{ fontSize: 16, color: "#666" }}>취소</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
       </ScrollView>
     </SafeAreaView>
   );
