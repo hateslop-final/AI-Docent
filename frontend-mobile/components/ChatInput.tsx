@@ -152,8 +152,8 @@ export default function ChatInput({
         >
           <MaterialIcons
             name="send"
-            size={20}
-            color={message.trim() ? "#fff" : "#ccc"}
+            size={25}
+            color={message.trim() ? "#007AFF" : "#ccc"}
           />
         </Pressable>
       ) : (
@@ -170,8 +170,8 @@ const styles = StyleSheet.create({
     right: 0,
     flexDirection: "row",
     paddingHorizontal: 12,
-    paddingTop: 12,
-    paddingBottom: 12,
+    paddingTop: 10,
+    paddingBottom: 10,
     alignItems: "center",
     backgroundColor: "#fff",
     zIndex: 999,
@@ -206,13 +206,13 @@ const styles = StyleSheet.create({
   sendButton: {
     width: 36,
     height: 36,
-    borderRadius: 18,
-    backgroundColor: "#007AFF",
+    // borderRadius: 18,
+    // backgroundColor: "#007AFF",
     alignItems: "center",
     justifyContent: "center",
   },
   sendButtonDisabled: {
-    backgroundColor: "#f5f5f5",
+    // backgroundColor: "#f5f5f5",
   },
   sendButtonPlaceholder: {
     width: 36,

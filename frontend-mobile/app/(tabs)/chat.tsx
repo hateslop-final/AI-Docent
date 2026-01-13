@@ -452,12 +452,12 @@ export default function ChatScreen() {
           </View>
         )}
 
-        {(currentArtworkId || messages.length > 0) ? (
+        {(currentArtworkId || messages.length > 0 || isLoading) ? (
           <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <ScrollView
               ref={scrollViewRef}
               contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
-              style={{ marginBottom: 104 }}
+              style={{ marginBottom: 30 }}
               keyboardShouldPersistTaps="handled"
               onScrollBeginDrag={Keyboard.dismiss}
             >
@@ -501,6 +501,32 @@ export default function ChatScreen() {
                 </View>
               );
             })}
+            
+            {/* 로딩 메시지 */}
+            {isLoading && (
+              <View
+                style={{
+                  alignItems: "flex-start",
+                  marginBottom: 12,
+                }}
+              >
+                <View
+                  style={{
+                    backgroundColor: "#f0f0f0",
+                    padding: 12,
+                    borderRadius: 16,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 8,
+                  }}
+                >
+                  <ActivityIndicator size="small" color="#007AFF" />
+                  <Text style={{ color: "#666", fontSize: 14 }}>
+                    답변 생성 중...
+                  </Text>
+                </View>
+              </View>
+            )}
           </ScrollView>
           </TouchableWithoutFeedback>
         ) : (
