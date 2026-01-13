@@ -1,4 +1,4 @@
-import { Alert, Image, Platform, Pressable, ScrollView, Text, View, TouchableWithoutFeedback, Keyboard } from "react-native";
+import { Alert, Image, Platform, Pressable, ScrollView, Text, View, TouchableWithoutFeedback, Keyboard, ActivityIndicator  } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useMemo, useState } from "react";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -417,7 +417,7 @@ export default function ChatScreen() {
 
   /** ===== UI ===== */
   return (
-      <View style={{ flex: 1, backgroundColor: "#fff" }}>
+    <View style={{ flex: 1, backgroundColor: "#fff" }}>
         {/* 세션 제목 헤더 (로그인한 사용자만 표시) */}
         {isLoggedIn && exhibitionId && (
           <View
@@ -452,15 +452,17 @@ export default function ChatScreen() {
           </View>
         )}
 
-        {(currentArtworkId || messages.length > 0 || isLoading) ? (
-          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-            <ScrollView
-              ref={scrollViewRef}
-              contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
-              style={{ marginBottom: 30 }}
-              keyboardShouldPersistTaps="handled"
-              onScrollBeginDrag={Keyboard.dismiss}
-            >
+        {/* 채팅창을 입력창과 하단 탭바 위 영역으로만 제한 */}
+        <View style={{ flex: 1 }}>
+          {(currentArtworkId || messages.length > 0 || isLoading) ? (
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+              <ScrollView
+                ref={scrollViewRef}
+                contentContainerStyle={{ padding: 16, paddingBottom: 50 }}
+                style={{ flex: 1, marginBottom: 92 }}
+                keyboardShouldPersistTaps="handled"
+                onScrollBeginDrag={Keyboard.dismiss}
+              >
             {messages.map((msg, idx) => {
               const prev = idx > 0 ? messages[idx - 1] : null;
               const showImage =
@@ -529,33 +531,34 @@ export default function ChatScreen() {
             )}
           </ScrollView>
           </TouchableWithoutFeedback>
-        ) : (
-          // When a gallery is selected but no exhibition is chosen, prompt user to
-          // select an exhibition and disable camera/chat inputs.
-          !exhibitionId && galleryId ? (
-            <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-              <MaterialIcons name="event" size={48} color="#666" />
-              <Text style={{ marginTop: 12, fontSize: 16, fontWeight: "600" }}>전시를 선택해주세요</Text>
-              <Text style={{ marginTop: 8, color: "#666" }}>상단에서 전시를 선택하면 채팅과 카메라 기능을 사용할 수 있습니다.</Text>
-            </View>
           ) : (
-            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            // When a gallery is selected but no exhibition is chosen, prompt user to
+            // select an exhibition and disable camera/chat inputs.
+            !exhibitionId && galleryId ? (
               <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-                {isPastExhibition ? (
-                  <>
-                    <MaterialIcons name="image-search" size={48} color="#007AFF" />
-                    <Text style={{ marginTop: 12 }}>작품을 검색해주세요</Text>
-                  </>
-                ) : (
-                  <>
-                <MaterialIcons name="camera-alt" size={48} color="#007AFF" />
-                <Text style={{ marginTop: 12 }}>작품을 촬영해주세요</Text>
-                  </>
-                )}
+                <MaterialIcons name="event" size={48} color="#666" />
+                <Text style={{ marginTop: 12, fontSize: 16, fontWeight: "600" }}>전시를 선택해주세요</Text>
+                <Text style={{ marginTop: 8, color: "#666" }}>상단에서 전시를 선택하면 채팅과 카메라 기능을 사용할 수 있습니다.</Text>
               </View>
-            </TouchableWithoutFeedback>
-          )
-        )}
+            ) : (
+              <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+                  {isPastExhibition ? (
+                    <>
+                      <MaterialIcons name="image-search" size={48} color="#007AFF" />
+                      <Text style={{ marginTop: 12 }}>작품을 검색해주세요</Text>
+                    </>
+                  ) : (
+                    <>
+                  <MaterialIcons name="camera-alt" size={48} color="#007AFF" />
+                  <Text style={{ marginTop: 12 }}>작품을 촬영해주세요</Text>
+                    </>
+                  )}
+                </View>
+              </TouchableWithoutFeedback>
+            )
+          )}
+        </View>
 
         {/* 입력 */}
         <ChatInput
@@ -641,6 +644,6 @@ export default function ChatScreen() {
             setSessionTitle(null);
           }}
         />
-      </View>
+    </View>
   );
 }
