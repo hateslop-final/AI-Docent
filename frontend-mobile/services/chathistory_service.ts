@@ -40,16 +40,43 @@ export const ChatDatabaseService = {
 
     let activeSessionId = sessionId;
 
-    // 1. 세션 ID가 없는 경우에만 새로 생성
+    // 1. 세션 ID가 없는 경우에만 새로 생성 (3개 제한 체크 포함)
     if (!activeSessionId) {
+      console.log('[ChatDatabaseService] 🔵 saveFullHistory에서 세션 자동 생성 시도:', {
+        userId,
+        exhibitionId,
+        exhibitionName,
+        messageCount: messages.length,
+        timestamp: new Date().toISOString()
+      });
+
+      // 세션 개수 제한 확인 (3개까지)
+      const existingSessions = await this.listSessions(userId, exhibitionId);
+      console.log('[ChatDatabaseService] 🔵 saveFullHistory 기존 세션 개수:', existingSessions.length, existingSessions.map(s => ({ id: s.id, title: s.title, created_at: s.created_at })));
+      
+      if (existingSessions.length >= 3) {
+        console.error('[ChatDatabaseService] ❌ saveFullHistory 세션 개수 제한 초과:', existingSessions.length);
+        throw new Error('전시당 최대 3개의 세션만 생성할 수 있습니다. 기존 세션을 삭제한 후 새로 생성해주세요.');
+      }
+
       const { data: history, error: historyError } = await supabase
         .from('chat_history')
         .insert({ user_id: userId, exhibition_id: exhibitionId, title: exhibitionName })
         .select()
         .single();
 
-      if (historyError) throw historyError;
+      if (historyError) {
+        console.error('[ChatDatabaseService] ❌ saveFullHistory 세션 생성 DB 오류:', historyError);
+        throw historyError;
+      }
+      
       activeSessionId = history.id;
+      console.log('[ChatDatabaseService] ✅ saveFullHistory에서 세션 자동 생성 완료:', {
+        sessionId: activeSessionId,
+        title: exhibitionName,
+        userId,
+        exhibitionId
+      });
     }
 
     // 2. 해당 세션의 마지막 메시지 확인 (중복 방지)
@@ -135,13 +162,41 @@ export const ChatDatabaseService = {
   },
 
   async createSession(userId: string, exhibitionId: number, title?: string) {
+    console.log('[ChatDatabaseService] 🔵 createSession 호출:', {
+      userId,
+      exhibitionId,
+      title,
+      timestamp: new Date().toISOString()
+    });
+
+    // 세션 개수 제한 확인 (3개까지)
+    const existingSessions = await this.listSessions(userId, exhibitionId);
+    console.log('[ChatDatabaseService] 🔵 기존 세션 개수:', existingSessions.length, existingSessions.map(s => ({ id: s.id, title: s.title, created_at: s.created_at })));
+    
+    if (existingSessions.length >= 3) {
+      console.error('[ChatDatabaseService] ❌ 세션 개수 제한 초과:', existingSessions.length);
+      throw new Error('전시당 최대 3개의 세션만 생성할 수 있습니다. 기존 세션을 삭제한 후 새로 생성해주세요.');
+    }
+
     const { data, error } = await supabase
       .from('chat_history')
       .insert({ user_id: userId, exhibition_id: exhibitionId, title: title ?? `세션 ${new Date().toLocaleString()}` })
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('[ChatDatabaseService] ❌ createSession DB 오류:', error);
+      throw error;
+    }
+    
+    console.log('[ChatDatabaseService] ✅ 세션 생성 완료:', {
+      sessionId: data.id,
+      title: data.title,
+      created_at: data.created_at,
+      userId,
+      exhibitionId
+    });
+    
     return data as { id: number; title: string; created_at: string };
   },
 
@@ -174,5 +229,96 @@ export const ChatDatabaseService = {
 
     if (error) throw error;
     return data as { id: number; title: string; created_at: string; updated_at: string } | null;
+  },
+
+  /**
+   * 전시 변경 시 현재 세션 저장
+   * @param userId 사용자 ID
+   * @param exhibitionId 전시 ID
+   * @param messages 저장할 메시지 목록
+   * @param exhibitionName 전시 이름
+   * @param sessionId 세션 ID (있으면 기존 세션에 저장, 없으면 새로 생성)
+   * @param ageGroup 연령대
+   * @param expertiseLevel 전문성 수준
+   * @returns 저장된 세션 ID 또는 null
+   */
+  async saveOnExhibitionChange(
+    userId: string,
+    exhibitionId: number,
+    messages: Message[],
+    exhibitionName: string,
+    sessionId?: number | null,
+    ageGroup?: string | null,
+    expertiseLevel?: string | null
+  ): Promise<number | null> {
+    if (messages.length === 0) {
+      console.log('[ChatDatabaseService] No messages to save');
+      return null;
+    }
+    console.log(messages);
+    try {
+      const savedSessionId = await this.saveFullHistory(
+        userId,
+        exhibitionId,
+        messages,
+        exhibitionName,
+        sessionId,
+        ageGroup,
+        expertiseLevel
+      );
+      console.log('[ChatDatabaseService] ✅ Saved session on exhibition change', savedSessionId);
+      return savedSessionId ?? null;
+    } catch (e: any) {
+      console.error('[ChatDatabaseService] ❌ Failed to save on exhibition change:', e);
+      throw e;
+    }
+  },
+
+  /**
+   * 세션 변경 시 현재 세션 저장
+   * @param userId 사용자 ID
+   * @param exhibitionId 전시 ID
+   * @param messages 저장할 메시지 목록
+   * @param exhibitionName 전시 이름
+   * @param prevSessionId 이전 세션 ID
+   * @param ageGroup 연령대
+   * @param expertiseLevel 전문성 수준
+   * @returns 저장된 세션 ID 또는 null
+   */
+  async saveOnSessionChange(
+    userId: string,
+    exhibitionId: number,
+    messages: Message[],
+    exhibitionName: string,
+    prevSessionId: number | null,
+    ageGroup?: string | null,
+    expertiseLevel?: string | null
+  ): Promise<number | null> {
+    if (messages.length === 0) {
+      console.log('[ChatDatabaseService] No messages to save on session change');
+      return null;
+    }
+
+    if (!prevSessionId) {
+      console.log('[ChatDatabaseService] No previous session ID to save');
+      return null;
+    }
+
+    try {
+      const savedSessionId = await this.saveFullHistory(
+        userId,
+        exhibitionId,
+        messages,
+        exhibitionName,
+        prevSessionId,
+        ageGroup,
+        expertiseLevel
+      );
+      console.log('[ChatDatabaseService] ✅ Saved session on session change', savedSessionId);
+      return savedSessionId ?? null;
+    } catch (e: any) {
+      console.error('[ChatDatabaseService] ❌ Failed to save on session change:', e);
+      throw e;
+    }
   }
 };

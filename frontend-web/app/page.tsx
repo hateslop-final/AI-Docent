@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { fetchGalleries, fetchExhibitions, fetchArtworks } from "@/lib/api";
+import { fetchGalleries, fetchAllExhibitions, fetchAllArtworks } from "@/lib/api";
 import type { Gallery, Exhibition, Artwork } from "@/lib/types";
 import AdminSidebar from "@/components/AdminSidebar";
 
@@ -26,22 +26,28 @@ export default function AdminDashboard() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        // 모든 갤러리 가져오기
-        const galleries = await fetchGalleries().catch(() => []);
-        
-        // 모든 전시 가져오기 (각 갤러리별로)
-        const allExhibitions: Exhibition[] = [];
-        for (const gallery of galleries) {
-          const exhibitions = await fetchExhibitions(gallery.id).catch(() => []);
-          allExhibitions.push(...exhibitions);
-        }
+        // 병렬로 모든 데이터 가져오기
+        const [galleries, allExhibitions] = await Promise.all([
+          fetchGalleries().catch((error) => {
+            console.error("갤러리 조회 실패:", error);
+            return [];
+          }),
+          fetchAllExhibitions().catch((error) => {
+            console.error("전시 조회 실패:", error);
+            return [];
+          }),
+        ]);
 
-        // 모든 작품 가져오기 (각 전시별로)
-        const allArtworks: Artwork[] = [];
-        for (const exhibition of allExhibitions) {
-          const artworks = await fetchArtworks(exhibition.id).catch(() => []);
-          allArtworks.push(...artworks);
-        }
+        console.log("갤러리 수:", galleries.length);
+        console.log("전시 수:", allExhibitions.length);
+
+        // Artwork 테이블에서 모든 작품 직접 가져오기
+        const allArtworks = await fetchAllArtworks().catch((error) => {
+          console.error("작품 조회 실패:", error);
+          return [];
+        });
+        
+        console.log("작품 수:", allArtworks.length);
 
         // 전체 통계
         setStats([
@@ -91,20 +97,100 @@ export default function AdminDashboard() {
         ]);
 
         // 갤러리별 상세 통계
-        const galleryStatsData: GalleryStats[] = [];
-        for (const gallery of galleries) {
-          const exhibitions = await fetchExhibitions(gallery.id).catch(() => []);
-          let artworkCount = 0;
-          for (const exhibition of exhibitions) {
-            const artworks = await fetchArtworks(exhibition.id).catch(() => []);
-            artworkCount += artworks.length;
+        // 갤러리 ID -> 전시 ID Set 매핑
+        console.log("=== 갤러리-전시 매핑 시작 ===");
+        const galleryExhibitionMap = new Map<number, Set<number>>();
+        
+        allExhibitions.forEach((exhibition) => {
+          if (!galleryExhibitionMap.has(exhibition.gallery_id)) {
+            galleryExhibitionMap.set(exhibition.gallery_id, new Set());
           }
-          galleryStatsData.push({
-            gallery,
-            exhibitionCount: exhibitions.length,
-            artworkCount,
+          galleryExhibitionMap.get(exhibition.gallery_id)!.add(exhibition.id);
+        });
+
+        // 갤러리-전시 매핑 결과 출력
+        console.log("갤러리-전시 매핑 결과:");
+        galleryExhibitionMap.forEach((exhibitionIds, galleryId) => {
+          const gallery = galleries.find(g => g.id === galleryId);
+          console.log(`  갤러리 ${galleryId} (${gallery?.name || '알 수 없음'}): 전시 ${exhibitionIds.size}개`, Array.from(exhibitionIds).slice(0, 10));
+        });
+
+        // 작품의 exhibition_id 샘플 출력
+        console.log("작품의 exhibition_id 샘플 (처음 20개):");
+        allArtworks.slice(0, 20).forEach((artwork, index) => {
+          console.log(`  작품 ${index + 1}: id=${artwork.id}, exhibition_id=${artwork.exhibition_id}, type=${typeof artwork.exhibition_id}`);
+        });
+
+        // 갤러리별 작품 수 카운트
+        // 각 갤러리의 전시 ID Set에 작품의 exhibition_id가 포함되는지 확인
+        console.log("=== 갤러리별 작품 카운트 시작 ===");
+        const galleryStatsData: GalleryStats[] = galleries.map((gallery) => {
+          const galleryExhibitionIds = galleryExhibitionMap.get(gallery.id) || new Set<number>();
+          const exhibitionCount = galleryExhibitionIds.size;
+          
+          console.log(`\n갤러리 ${gallery.id} (${gallery.name}) 처리 중...`);
+          console.log(`  전시 ID Set:`, Array.from(galleryExhibitionIds).slice(0, 10), `(총 ${galleryExhibitionIds.size}개)`);
+          
+          // 작품의 exhibition_id가 이 갤러리의 전시 ID Set에 포함되는지 확인
+          const matchedArtworks: any[] = [];
+          const unmatchedArtworks: any[] = [];
+          let logCount = 0;
+          const maxLogCount = 10; // 처음 10개만 상세 로그
+          
+          allArtworks.forEach((artwork) => {
+            // 작품의 exhibition_id 확인
+            const rawExhibitionId = artwork.exhibition_id;
+            const shouldLog = logCount < maxLogCount;
+            
+            if (shouldLog) {
+              console.log(`    작품 ${artwork.id}: exhibition_id=${rawExhibitionId}, type=${typeof rawExhibitionId}`);
+            }
+            
+            if (!rawExhibitionId) {
+              unmatchedArtworks.push({ artworkId: artwork.id, reason: 'exhibition_id가 null/undefined' });
+              if (shouldLog) console.log(`      -> exhibition_id가 없음`);
+              logCount++;
+              return;
+            }
+            
+            const artworkExhibitionId = Number(rawExhibitionId);
+            
+            if (shouldLog) {
+              console.log(`      -> 변환된 값: ${artworkExhibitionId}, isNaN: ${isNaN(artworkExhibitionId)}`);
+              console.log(`      -> 전시 ID Set에 포함?: ${galleryExhibitionIds.has(artworkExhibitionId)}`);
+            }
+            
+            if (galleryExhibitionIds.has(artworkExhibitionId)) {
+              matchedArtworks.push({ artworkId: artwork.id, exhibitionId: artworkExhibitionId });
+              if (shouldLog) console.log(`      -> 매칭됨!`);
+            } else {
+              unmatchedArtworks.push({ artworkId: artwork.id, exhibitionId: artworkExhibitionId });
+              if (shouldLog) console.log(`      -> 매칭 안됨 (전시 ID ${artworkExhibitionId}가 이 갤러리의 전시 목록에 없음)`);
+            }
+            
+            logCount++;
           });
-        }
+
+          const artworkCount = matchedArtworks.length;
+          
+          console.log(`  매칭된 작품: ${artworkCount}개`);
+          if (matchedArtworks.length > 0) {
+            console.log(`  매칭된 작품 샘플:`, matchedArtworks.slice(0, 5));
+          }
+          if (unmatchedArtworks.length > 0 && unmatchedArtworks.length <= 10) {
+            console.log(`  매칭 안된 작품 샘플:`, unmatchedArtworks.slice(0, 5));
+          }
+
+          console.log(`갤러리 ${gallery.id} (${gallery.name}): 전시 ${exhibitionCount}개, 작품 ${artworkCount}개`);
+
+          return {
+            gallery,
+            exhibitionCount,
+            artworkCount,
+          };
+        });
+        
+        console.log("=== 갤러리별 작품 카운트 완료 ===");
         setGalleryStats(galleryStatsData);
       } catch (error) {
         console.error("통계 로딩 실패:", error);

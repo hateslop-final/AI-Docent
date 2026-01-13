@@ -4,7 +4,12 @@ import { useState, useEffect } from "react";
 import {
   fetchGalleries,
   fetchExhibitions,
+  fetchAllExhibitions,
   fetchArtworks,
+  fetchArtworksByExhibitions,
+  fetchAllArtists,
+  fetchArtworksByArtists,
+  getArtworkExhibitions,
   createArtwork,
   updateArtwork,
   deleteArtwork,
@@ -14,19 +19,37 @@ import type { Artwork, Exhibition } from "@/lib/types";
 import AdminSidebar from "@/components/AdminSidebar";
 
 type SortOption = "title_asc" | "title_desc" | "artist_asc" | "artist_desc" | "year_asc" | "year_desc";
+type ViewMode = "exhibition" | "artist";
 
 export default function ArtworksPage() {
+  const [viewMode, setViewMode] = useState<ViewMode>("exhibition");
+  
+  // 공통 상태
   const [artworks, setArtworks] = useState<Artwork[]>([]);
   const [filteredArtworks, setFilteredArtworks] = useState<Artwork[]>([]);
-  const [exhibitions, setExhibitions] = useState<Exhibition[]>([]);
-  const [selectedExhibitionId, setSelectedExhibitionId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingArtwork, setEditingArtwork] = useState<Artwork | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortOption, setSortOption] = useState<SortOption>("title_asc");
+  
+  // 전시별 뷰 상태
+  const [exhibitions, setExhibitions] = useState<Exhibition[]>([]);
+  const [filteredExhibitions, setFilteredExhibitions] = useState<Exhibition[]>([]);
+  const [selectedExhibitionIds, setSelectedExhibitionIds] = useState<number[]>([]);
+  const [exhibitionSearchQuery, setExhibitionSearchQuery] = useState("");
+  const [exhibitionFilter, setExhibitionFilter] = useState<{
+    is_now?: boolean;
+    show?: boolean;
+  }>({});
+  
+  // 작가별 뷰 상태
+  const [artists, setArtists] = useState<string[]>([]);
+  const [filteredArtists, setFilteredArtists] = useState<string[]>([]);
+  const [selectedArtistNames, setSelectedArtistNames] = useState<string[]>([]);
+  const [artistSearchQuery, setArtistSearchQuery] = useState("");
   const [formData, setFormData] = useState({
-    exhibition_id: "",
+    exhibition_ids: [] as number[],
     title: "",
     artist: "",
     description: "",
@@ -41,39 +64,116 @@ export default function ArtworksPage() {
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
-    loadAllExhibitions();
-  }, []);
+    if (viewMode === "exhibition") {
+      loadAllExhibitions();
+    } else {
+      loadAllArtists();
+    }
+  }, [viewMode]);
 
   useEffect(() => {
-    if (selectedExhibitionId) {
-      loadArtworks(selectedExhibitionId);
+    if (viewMode === "exhibition") {
+      loadFilteredExhibitions();
+    } else {
+      loadFilteredArtists();
     }
-  }, [selectedExhibitionId]);
+  }, [viewMode, exhibitionFilter, exhibitionSearchQuery, artistSearchQuery]);
+
+  useEffect(() => {
+    if (viewMode === "exhibition") {
+      if (selectedExhibitionIds.length > 0) {
+        loadArtworksByExhibitions(selectedExhibitionIds);
+      } else {
+        setArtworks([]);
+        setFilteredArtworks([]);
+        setLoading(false);
+      }
+    } else {
+      if (selectedArtistNames.length > 0) {
+        loadArtworksByArtists(selectedArtistNames);
+      } else {
+        setArtworks([]);
+        setFilteredArtworks([]);
+        setLoading(false);
+      }
+    }
+  }, [viewMode, selectedExhibitionIds, selectedArtistNames]);
 
   const loadAllExhibitions = async () => {
     try {
-      const galleries = await fetchGalleries();
-      const allExhibitions: Exhibition[] = [];
-      
-      // 모든 갤러리의 전시를 가져오기
-      for (const gallery of galleries) {
-        const exhibitions = await fetchExhibitions(gallery.id).catch(() => []);
-        allExhibitions.push(...exhibitions);
-      }
-      
-      setExhibitions(allExhibitions);
-      if (allExhibitions.length > 0 && !selectedExhibitionId) {
-        setSelectedExhibitionId(allExhibitions[0].id);
-      }
+      const data = await fetchAllExhibitions();
+      setExhibitions(data);
+      loadFilteredExhibitions();
     } catch (error) {
       console.error("전시 로딩 실패:", error);
     }
   };
 
-  const loadArtworks = async (exhibitionId: number) => {
+  const loadFilteredExhibitions = async () => {
+    try {
+      const filters: { is_now?: boolean; show?: boolean; search?: string } = {};
+      if (exhibitionFilter.is_now !== undefined) filters.is_now = exhibitionFilter.is_now;
+      if (exhibitionFilter.show !== undefined) filters.show = exhibitionFilter.show;
+      if (exhibitionSearchQuery.trim()) filters.search = exhibitionSearchQuery;
+
+      const data = await fetchAllExhibitions(filters);
+      setFilteredExhibitions(data);
+    } catch (error) {
+      console.error("전시 필터링 실패:", error);
+    }
+  };
+
+  const loadAllArtists = async () => {
+    try {
+      const data = await fetchAllArtists();
+      setArtists(data);
+      loadFilteredArtists();
+    } catch (error) {
+      console.error("작가 로딩 실패:", error);
+    }
+  };
+
+  const loadFilteredArtists = () => {
+    let filtered = [...artists];
+    
+    if (artistSearchQuery.trim()) {
+      const query = artistSearchQuery.toLowerCase();
+      filtered = filtered.filter((artist) =>
+        artist.toLowerCase().includes(query)
+      );
+    }
+    
+    setFilteredArtists(filtered);
+  };
+
+  const loadArtworksByExhibitions = async (exhibitionIds: number[]) => {
     setLoading(true);
     try {
-      const data = await fetchArtworks(exhibitionId);
+      // 다대다 관계를 사용하여 작품 가져오기
+      const data = await fetchArtworksByExhibitions(exhibitionIds);
+      setArtworks(data);
+      setFilteredArtworks(data);
+    } catch (error) {
+      console.error("작품 로딩 실패:", error);
+      // 다대다 관계가 없으면 기존 방식으로 폴백
+      if (exhibitionIds.length === 1) {
+        try {
+          const data = await fetchArtworks(exhibitionIds[0]);
+          setArtworks(data);
+          setFilteredArtworks(data);
+        } catch (fallbackError) {
+          console.error("작품 로딩 실패 (폴백):", fallbackError);
+        }
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadArtworksByArtists = async (artistNames: string[]) => {
+    setLoading(true);
+    try {
+      const data = await fetchArtworksByArtists(artistNames);
       setArtworks(data);
       setFilteredArtworks(data);
     } catch (error) {
@@ -148,8 +248,14 @@ export default function ArtworksPage() {
         }
       }
 
+      if (formData.exhibition_ids.length === 0) {
+        alert("최소 하나의 전시를 선택해주세요.");
+        setUploading(false);
+        return;
+      }
+
       const submitData = {
-        exhibition_id: Number(formData.exhibition_id),
+        exhibition_ids: formData.exhibition_ids,
         title: formData.title,
         artist: formData.artist,
         description: formData.description || undefined,
@@ -160,7 +266,7 @@ export default function ArtworksPage() {
         management_number: formData.management_number
           ? Number(formData.management_number)
           : undefined,
-        is_now: formData.is_now || undefined,
+        is_now: formData.is_now, // boolean 값은 명시적으로 전달 (false도 유지)
       };
 
       if (editingArtwork) {
@@ -173,7 +279,7 @@ export default function ArtworksPage() {
       setShowForm(false);
       setEditingArtwork(null);
       setFormData({
-        exhibition_id: "",
+        exhibition_ids: [],
         title: "",
         artist: "",
         description: "",
@@ -185,7 +291,11 @@ export default function ArtworksPage() {
         management_number: "",
         is_now: false,
       });
-      if (selectedExhibitionId) loadArtworks(selectedExhibitionId);
+      if (viewMode === "exhibition" && selectedExhibitionIds.length > 0) {
+        loadArtworksByExhibitions(selectedExhibitionIds);
+      } else if (viewMode === "artist" && selectedArtistNames.length > 0) {
+        loadArtworksByArtists(selectedArtistNames);
+      }
     } catch (error) {
       console.error("저장 실패:", error);
       alert("저장에 실패했습니다. 백엔드 API가 구현되었는지 확인해주세요.");
@@ -194,10 +304,23 @@ export default function ArtworksPage() {
     }
   };
 
-  const handleEdit = (artwork: Artwork) => {
+  const handleEdit = async (artwork: Artwork) => {
     setEditingArtwork(artwork);
+    
+    // 작품에 연결된 전시 목록 가져오기
+    let exhibitionIds: number[] = [];
+    try {
+      exhibitionIds = await getArtworkExhibitions(artwork.id);
+    } catch (error) {
+      console.error("연결된 전시 조회 실패:", error);
+      // 폴백: 기존 exhibition_id 사용
+      if (artwork.exhibition_id) {
+        exhibitionIds = [artwork.exhibition_id];
+      }
+    }
+
     setFormData({
-      exhibition_id: String(artwork.exhibition_id),
+      exhibition_ids: exhibitionIds,
       title: artwork.title,
       artist: artwork.artist,
       description: artwork.description || "",
@@ -207,7 +330,7 @@ export default function ArtworksPage() {
       ingredients: artwork.ingredients || "",
       size: artwork.size || "",
       management_number: String(artwork.management_number || ""),
-      is_now: artwork.is_now || false,
+      is_now: Boolean(artwork.is_now), // boolean으로 명시적 변환
     });
     setShowForm(true);
   };
@@ -217,7 +340,11 @@ export default function ArtworksPage() {
     try {
       await deleteArtwork(id);
       alert("작품이 삭제되었습니다.");
-      if (selectedExhibitionId) loadArtworks(selectedExhibitionId);
+      if (viewMode === "exhibition" && selectedExhibitionIds.length > 0) {
+        loadArtworksByExhibitions(selectedExhibitionIds);
+      } else if (viewMode === "artist" && selectedArtistNames.length > 0) {
+        loadArtworksByArtists(selectedArtistNames);
+      }
     } catch (error) {
       console.error("삭제 실패:", error);
       alert("삭제에 실패했습니다. 백엔드 API가 구현되었는지 확인해주세요.");
@@ -230,27 +357,15 @@ export default function ArtworksPage() {
 
       {/* 메인 컨텐츠 */}
       <main className="flex-1 overflow-y-auto p-8">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-3xl font-bold">작품 관리</h2>
-          <div className="flex gap-4 items-center">
-            <select
-              value={selectedExhibitionId || ""}
-              onChange={(e) => setSelectedExhibitionId(Number(e.target.value))}
-              className="px-4 py-2 border rounded min-w-[300px]"
-            >
-              <option value="">전시 선택</option>
-              {exhibitions.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.name}
-                </option>
-              ))}
-            </select>
+        <div className="mb-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-3xl font-bold">작품 관리</h2>
             <button
               onClick={() => {
                 setShowForm(true);
                 setEditingArtwork(null);
                 setFormData({
-                  exhibition_id: String(selectedExhibitionId || ""),
+                  exhibition_ids: selectedExhibitionIds,
                   title: "",
                   artist: "",
                   description: "",
@@ -264,11 +379,223 @@ export default function ArtworksPage() {
                 });
               }}
               className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-              disabled={!selectedExhibitionId}
             >
               + 새 작품 추가
             </button>
           </div>
+
+          {/* 탭 메뉴 */}
+          <div className="flex gap-2 mb-4 border-b">
+            <button
+              onClick={() => {
+                setViewMode("exhibition");
+                setSelectedExhibitionIds([]);
+                setArtworks([]);
+                setFilteredArtworks([]);
+              }}
+              className={`px-4 py-2 font-medium ${
+                viewMode === "exhibition"
+                  ? "border-b-2 border-blue-600 text-blue-600"
+                  : "text-gray-600 hover:text-gray-800"
+              }`}
+            >
+              전시별 작품
+            </button>
+            <button
+              onClick={() => {
+                setViewMode("artist");
+                setSelectedArtistNames([]);
+                setArtworks([]);
+                setFilteredArtworks([]);
+              }}
+              className={`px-4 py-2 font-medium ${
+                viewMode === "artist"
+                  ? "border-b-2 border-blue-600 text-blue-600"
+                  : "text-gray-600 hover:text-gray-800"
+              }`}
+            >
+              작가별 작품
+            </button>
+          </div>
+
+          {/* 전시별 필터링 및 검색 */}
+          {viewMode === "exhibition" && (
+            <div className="bg-white rounded-lg shadow p-4 mb-4 border border-gray-200">
+              <div className="flex gap-4 items-center flex-wrap mb-4">
+                <div className="flex-1 min-w-[300px]">
+                  <input
+                    type="text"
+                    placeholder="전시명으로 검색..."
+                    value={exhibitionSearchQuery}
+                    onChange={(e) => setExhibitionSearchQuery(e.target.value)}
+                    className="w-full px-4 py-2 border rounded"
+                  />
+                </div>
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={exhibitionFilter.is_now === true}
+                      onChange={(e) =>
+                        setExhibitionFilter({
+                          ...exhibitionFilter,
+                          is_now: e.target.checked ? true : undefined,
+                        })
+                      }
+                      className="mr-2"
+                    />
+                    현재 전시 중
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={exhibitionFilter.show === true}
+                      onChange={(e) =>
+                        setExhibitionFilter({
+                          ...exhibitionFilter,
+                          show: e.target.checked ? true : undefined,
+                        })
+                      }
+                      className="mr-2"
+                    />
+                    표시 중
+                  </label>
+                  {(exhibitionFilter.is_now !== undefined ||
+                    exhibitionFilter.show !== undefined ||
+                    exhibitionSearchQuery) && (
+                    <button
+                      onClick={() => {
+                        setExhibitionFilter({});
+                        setExhibitionSearchQuery("");
+                      }}
+                      className="px-3 py-2 text-sm text-gray-600 hover:text-gray-800"
+                    >
+                      필터 초기화
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* 전시 선택 (다중 선택) */}
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  전시 선택 (다중 선택 가능)
+                </label>
+                <div className="max-h-40 overflow-y-auto border rounded p-2 space-y-2">
+                  {filteredExhibitions.length === 0 ? (
+                    <div className="text-sm text-gray-500 py-2">전시가 없습니다.</div>
+                  ) : (
+                    filteredExhibitions.map((exhibition) => (
+                      <label
+                        key={exhibition.id}
+                        className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedExhibitionIds.includes(exhibition.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedExhibitionIds([
+                                ...selectedExhibitionIds,
+                                exhibition.id,
+                              ]);
+                            } else {
+                              setSelectedExhibitionIds(
+                                selectedExhibitionIds.filter((id) => id !== exhibition.id)
+                              );
+                            }
+                          }}
+                          className="mr-2"
+                        />
+                        <span className="text-sm">
+                          {exhibition.name}
+                          {exhibition.is_now && (
+                            <span className="ml-2 text-xs text-blue-600">[진행중]</span>
+                          )}
+                          {exhibition.show && (
+                            <span className="ml-2 text-xs text-green-600">[표시]</span>
+                          )}
+                        </span>
+                      </label>
+                    ))
+                  )}
+                </div>
+                {selectedExhibitionIds.length > 0 && (
+                  <div className="mt-2 text-sm text-gray-600">
+                    선택된 전시: {selectedExhibitionIds.length}개
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* 작가별 필터링 및 검색 */}
+          {viewMode === "artist" && (
+            <div className="bg-white rounded-lg shadow p-4 mb-4 border border-gray-200">
+              <div className="mb-4">
+                <div className="flex-1 min-w-[300px]">
+                  <input
+                    type="text"
+                    placeholder="작가명으로 검색..."
+                    value={artistSearchQuery}
+                    onChange={(e) => setArtistSearchQuery(e.target.value)}
+                    className="w-full px-4 py-2 border rounded"
+                  />
+                </div>
+                {artistSearchQuery && (
+                  <button
+                    onClick={() => setArtistSearchQuery("")}
+                    className="mt-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-800"
+                  >
+                    검색 초기화
+                  </button>
+                )}
+              </div>
+
+              {/* 작가 선택 (다중 선택) */}
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  작가 선택 (다중 선택 가능)
+                </label>
+                <div className="max-h-40 overflow-y-auto border rounded p-2 space-y-2">
+                  {filteredArtists.length === 0 ? (
+                    <div className="text-sm text-gray-500 py-2">작가가 없습니다.</div>
+                  ) : (
+                    filteredArtists.map((artist) => (
+                      <label
+                        key={artist}
+                        className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedArtistNames.includes(artist)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedArtistNames([
+                                ...selectedArtistNames,
+                                artist,
+                              ]);
+                            } else {
+                              setSelectedArtistNames(
+                                selectedArtistNames.filter((name) => name !== artist)
+                              );
+                            }
+                          }}
+                          className="mr-2"
+                        />
+                        <span className="text-sm">{artist}</span>
+                      </label>
+                    ))
+                  )}
+                </div>
+                {selectedArtistNames.length > 0 && (
+                  <div className="mt-2 text-sm text-gray-600">
+                    선택된 작가: {selectedArtistNames.length}개
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 검색 및 정렬 */}
@@ -322,37 +649,69 @@ export default function ArtworksPage() {
               {editingArtwork ? "작품 수정" : "새 작품 추가"}
             </h3>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">전시</label>
-                  <select
-                    value={formData.exhibition_id}
-                    onChange={(e) =>
-                      setFormData({ ...formData, exhibition_id: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border rounded"
-                    required
-                  >
-                    <option value="">선택</option>
-                    {exhibitions.map((e) => (
-                      <option key={e.id} value={e.id}>
-                        {e.name}
-                      </option>
-                    ))}
-                  </select>
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  전시 (다중 선택 가능) <span className="text-red-500">*</span>
+                </label>
+                <div className="max-h-40 overflow-y-auto border rounded p-2 space-y-2">
+                  {exhibitions.length === 0 ? (
+                    <div className="text-sm text-gray-500 py-2">전시가 없습니다.</div>
+                  ) : (
+                    exhibitions.map((exhibition) => (
+                      <label
+                        key={exhibition.id}
+                        className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={formData.exhibition_ids.includes(exhibition.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setFormData({
+                                ...formData,
+                                exhibition_ids: [...formData.exhibition_ids, exhibition.id],
+                              });
+                            } else {
+                              setFormData({
+                                ...formData,
+                                exhibition_ids: formData.exhibition_ids.filter(
+                                  (id) => id !== exhibition.id
+                                ),
+                              });
+                            }
+                          }}
+                          className="mr-2"
+                        />
+                        <span className="text-sm">
+                          {exhibition.name}
+                          {exhibition.is_now && (
+                            <span className="ml-2 text-xs text-blue-600">[진행중]</span>
+                          )}
+                          {exhibition.show && (
+                            <span className="ml-2 text-xs text-green-600">[표시]</span>
+                          )}
+                        </span>
+                      </label>
+                    ))
+                  )}
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">제목</label>
-                  <input
-                    type="text"
-                    value={formData.title}
-                    onChange={(e) =>
-                      setFormData({ ...formData, title: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border rounded"
-                    required
-                  />
-                </div>
+                {formData.exhibition_ids.length > 0 && (
+                  <div className="mt-1 text-xs text-gray-500">
+                    선택된 전시: {formData.exhibition_ids.length}개
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">제목</label>
+                <input
+                  type="text"
+                  value={formData.title}
+                  onChange={(e) =>
+                    setFormData({ ...formData, title: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border rounded"
+                  required
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">작가</label>

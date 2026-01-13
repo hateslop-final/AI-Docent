@@ -61,6 +61,17 @@ export default function ChatScreen() {
   const [galleries, setGalleries] = useState<Gallery[]>([]);
   const scrollViewRef = useRef<ScrollView>(null);
   
+  // 세션 모달 열기 요청 감지
+  const shouldOpenSessionModal = useChatStore((s) => s.shouldOpenSessionModal);
+  useEffect(() => {
+    if (shouldOpenSessionModal && isLoggedIn && exhibitionId) {
+      console.log('[ChatScreen] 🔵 세션 모달 열기 요청 감지');
+      setShowSessions(true);
+      // 플래그 리셋
+      useChatStore.setState({ shouldOpenSessionModal: false });
+    }
+  }, [shouldOpenSessionModal, isLoggedIn, exhibitionId]);
+  
   // 갤러리 및 전시 정보 로드
   useEffect(() => {
     fetchGalleries()
@@ -142,6 +153,9 @@ export default function ChatScreen() {
     }
     prevExhibitionIdRef.current = exhibitionId;
   }, [exhibitionId]);
+
+  // 전시 선택 시 세션 생성은 ExhibitionHeader에서 처리하므로 여기서는 제거
+  // ExhibitionHeader에서 전시 변경 시 자동으로 세션을 생성함
 
   // DEBUG: log messages whenever exhibitionId or messages change (주석 처리 - 중복 실행 방지)
   // useEffect(() => {
@@ -295,6 +309,36 @@ export default function ChatScreen() {
     if (!age || !aesthetic) {
       Alert.alert("오류", "온보딩 설정을 완료해주세요.");
       return;
+    }
+
+    // 🔵 로그인 사용자이고 세션이 없으면 세션 생성
+    if (isLoggedIn && !currentSessionId && exhibitionId) {
+      try {
+        const currentExhibition = exhibitions.find(e => e.id === exhibitionId);
+        const exhibitionName = currentExhibition?.name || "알 수 없는 전시";
+        
+        console.log('[ChatScreen] 🔵 메시지 전송 전 세션 없음 - 새 세션 생성:', {
+          userId: user?.id,
+          exhibitionId,
+          exhibitionName
+        });
+        
+        const newSession = await ChatDatabaseService.createSession(
+          user!.id,
+          exhibitionId,
+          exhibitionName
+        );
+        
+        useChatStore.getState().setCurrentSessionId(newSession.id);
+        console.log('[ChatScreen] ✅ 새 세션 생성 완료:', {
+          sessionId: newSession.id,
+          title: newSession.title
+        });
+      } catch (e) {
+        console.error('[ChatScreen] ❌ 세션 생성 실패:', e);
+        Alert.alert("오류", "세션 생성 중 문제가 발생했습니다.");
+        return;
+      }
     }
 
     const userMsg: Message = {
@@ -528,7 +572,7 @@ export default function ChatScreen() {
             try {
               if (!exhibitionId) return;
               
-              // ExhibitionHeader에서 세션 변경 시 자동 저장 처리
+              // 로그인 사용자: 기존 세션 선택 시 로컬 세션 저장 → 초기화 → 선택한 세션 로드
               // 1. 먼저 세션 ID를 변경하면 ExhibitionHeader가 현재 세션의 메시지를 저장함
               // (메시지가 교체되기 전에 저장되도록)
               const prevSessionId = useChatStore.getState().currentSessionId;
@@ -540,7 +584,7 @@ export default function ChatScreen() {
               // 3. DB에서 선택한 세션의 메시지 불러오기
               const rows = await ChatDatabaseService.loadSessionMessages(sessionId);
               
-              // 4. 로컬 대화 기록에 불러온 메시지 설정 (이전 세션 메시지 대체)
+              // 4. 로컬 대화 기록에 불러온 메시지 설정 (ExhibitionHeader에서 이미 clearAllChatHistories 호출됨)
               setChatHistory(exhibitionId, rows);
               
               setShowSessions(false);
@@ -556,13 +600,16 @@ export default function ChatScreen() {
           onCreateNew={async (sessionId) => {
             if (!exhibitionId) return;
             
-            // ExhibitionHeader에서 세션 변경 시 자동 저장 처리
+            // 로그인 사용자: 세션 변경 시 로컬 세션 저장 → 초기화 → 새 세션 생성
             // 1. 먼저 세션 ID를 변경하면 ExhibitionHeader가 현재 세션의 메시지를 저장함
             // (메시지가 클리어되기 전에 저장되도록)
+            const prevSessionId = useChatStore.getState().currentSessionId;
             useChatStore.getState().setCurrentSessionId(sessionId);
+            
             // 2. ExhibitionHeader가 저장하는 시간을 주기 위해 약간의 지연
-            await new Promise(resolve => setTimeout(resolve, 100));
-            // 3. 로컬 대화 기록 초기화
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
+            // 3. 로컬 대화 기록 초기화 (ExhibitionHeader에서 이미 clearAllChatHistories 호출됨)
             setChatHistory(exhibitionId, []);
             setShowSessions(false);
             setSessionTitle(null);

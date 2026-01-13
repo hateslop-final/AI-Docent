@@ -43,6 +43,9 @@ type State = {
   markAllCleared: () => void;
   markExhibitionCleared: (exhibitionId: number) => void;
   isExhibitionCleared: (exhibitionId: number) => boolean;
+  // 세션 모달 열기 요청 (전시 변경 시 기존 세션이 있을 때)
+  openSessionModal: () => void;
+  shouldOpenSessionModal: boolean;
 };
 
 export const useChatStore = create<State>((set, get) => ({
@@ -50,6 +53,8 @@ export const useChatStore = create<State>((set, get) => ({
   clearedExhibitions: {},
   currentSessionId: null, // 초기값 null
   setCurrentSessionId: (id) => set({ currentSessionId: id }),
+  shouldOpenSessionModal: false,
+  openSessionModal: () => set({ shouldOpenSessionModal: true }),
   getChatHistory: (exhibitionId: number) => get().chatHistories[exhibitionId],
   addMessage: (exhibitionId: number, message: Message) => {
     const { chatHistories } = get();
@@ -67,13 +72,39 @@ export const useChatStore = create<State>((set, get) => ({
       const updated = { ...get().clearedExhibitions, [exhibitionId]: false };
       set({ clearedExhibitions: updated });
     }
+    const newMessages = [...existingHistory.messages, message];
     set({
       chatHistories: {
         ...chatHistories,
         [exhibitionId]: {
-          messages: [...existingHistory.messages, message],
+          messages: newMessages,
         },
       },
+    });
+    
+    // 🔵 메시지 추가 후 현재 로컬 스토어의 모든 메시지 로그 출력
+    const updatedState = get();
+    const currentHistory = updatedState.chatHistories[exhibitionId];
+    console.log('[ChatStore] 📝 메시지 추가 완료:', {
+      exhibitionId,
+      addedMessage: {
+        id: message.id,
+        text: message.text.substring(0, 50) + (message.text.length > 50 ? '...' : ''),
+        isUser: message.isUser,
+        timestamp: message.timestamp.toISOString()
+      },
+      currentSessionId: updatedState.currentSessionId,
+      totalMessagesInExhibition: currentHistory?.messages.length || 0,
+      allMessages: currentHistory?.messages.map(m => ({
+        id: m.id,
+        text: m.text.substring(0, 50) + (m.text.length > 50 ? '...' : ''),
+        isUser: m.isUser,
+        timestamp: m.timestamp.toISOString()
+      })) || [],
+      allExhibitions: Object.keys(updatedState.chatHistories).map(id => ({
+        exhibitionId: Number(id),
+        messageCount: updatedState.chatHistories[Number(id)]?.messages.length || 0
+      }))
     });
   },
   setChatHistory: (exhibitionId: number, messages: Message[]) => {
@@ -90,6 +121,25 @@ export const useChatStore = create<State>((set, get) => ({
       const updated = { ...get().clearedExhibitions, [exhibitionId]: false };
       set({ clearedExhibitions: updated });
     }
+    
+    // 🔵 히스토리 설정 후 현재 로컬 스토어의 모든 메시지 로그 출력
+    const updatedState = get();
+    const currentHistory = updatedState.chatHistories[exhibitionId];
+    console.log('[ChatStore] 📚 히스토리 설정 완료:', {
+      exhibitionId,
+      messageCount: messages.length,
+      currentSessionId: updatedState.currentSessionId,
+      allMessages: currentHistory?.messages.map(m => ({
+        id: m.id,
+        text: m.text.substring(0, 50) + (m.text.length > 50 ? '...' : ''),
+        isUser: m.isUser,
+        timestamp: m.timestamp.toISOString()
+      })) || [],
+      allExhibitions: Object.keys(updatedState.chatHistories).map(id => ({
+        exhibitionId: Number(id),
+        messageCount: updatedState.chatHistories[Number(id)]?.messages.length || 0
+      }))
+    });
   },
   clearChatHistory: (exhibitionId: number) => {
     // Log current history before clearing for debugging/audit

@@ -70,8 +70,16 @@ export default function SessionListModal({
   const handleCreate = async () => {
     if (!user || !exhibitionId) return;
 
+    console.log('[SessionListModal] 🔵 새 세션 생성 버튼 클릭:', {
+      userId: user.id,
+      exhibitionId,
+      currentSessionsCount: sessions.length,
+      timestamp: new Date().toISOString()
+    });
+
     // 세션 개수 제한 확인 (3개까지)
     if (sessions.length >= 3) {
+      console.warn('[SessionListModal] ⚠️ 세션 개수 제한 초과:', sessions.length);
       Alert.alert(
         '세션 개수 제한',
         '전시당 최대 3개의 세션만 생성할 수 있습니다.\n기존 세션을 삭제한 후 새로 생성해주세요.',
@@ -82,13 +90,19 @@ export default function SessionListModal({
 
     setLoading(true);
     try {
+      console.log('[SessionListModal] 🔵 createSession 호출 전:', { userId: user.id, exhibitionId });
       const r = await ChatDatabaseService.createSession(
         user.id,
         exhibitionId
       );
+      console.log('[SessionListModal] ✅ 새 세션 생성 완료:', {
+        sessionId: r.id,
+        title: r.title,
+        created_at: r.created_at
+      });
       onCreateNew(r.id);
     } catch (e: any) {
-      console.log('[SessionListModal] createSession error', e);
+      console.error('[SessionListModal] ❌ 새 세션 생성 실패:', e);
       setError(e.message || '세션 생성 실패');
     } finally {
       setLoading(false);
