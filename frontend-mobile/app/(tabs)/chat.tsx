@@ -344,7 +344,7 @@ export default function ChatScreen() {
               id: `bot-${baseTimestamp}-${index}`,
               text: paragraph,
               isUser: false,
-              timestamp: new Date(baseTimestamp + index * 800),
+              timestamp: new Date(baseTimestamp + index * 1000),
               exhibitionId,
         artworkId: currentArtworkId,
       });
@@ -411,8 +411,8 @@ export default function ChatScreen() {
           <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <ScrollView
               ref={scrollViewRef}
-              contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
-              style={{ marginBottom: 104 }}
+              contentContainerStyle={{ padding: 16, paddingBottom: 90}}
+              style={{ marginBottom: 90}}
               keyboardShouldPersistTaps="handled"
               onScrollBeginDrag={Keyboard.dismiss}
             >

@@ -53,7 +53,7 @@ export default function ChatInput({
   const floatingTabBarHeight = 92;
   const bottomOffset = isKeyboardVisible
     ? keyboardHeight
-    : floatingTabBarHeight;
+    : floatingTabBarHeight + 0;
 
   return (
     <View

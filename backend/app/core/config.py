@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     OPENAI_API_KEY : str
     OPENAI_MODEL : str = "gpt-4o-mini"
     CLIP_MODEL: str = "ViT-B/32"
-
+    TAVILY_API_KEY: str=""
     class Config:
         env_file = [
             Path("/backend/app/.env.local"),
