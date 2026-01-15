@@ -9,6 +9,12 @@ export type Exhibition = {
   gallery_id?: number;
   is_now?: boolean;
   show?: boolean;
+  poster_url?: string;
+  brochure?: string;
+  location?: string;
+  admission_fee?: string;
+  info?: string;
+  created_at?: string;
 };
 
 export async function fetchExhibitionById(id: number): Promise<Exhibition | null> {
