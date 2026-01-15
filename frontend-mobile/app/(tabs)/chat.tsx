@@ -60,6 +60,7 @@ export default function ChatScreen() {
   const [exhibitions, setExhibitions] = useState<Exhibition[]>([]);
   const [galleries, setGalleries] = useState<Gallery[]>([]);
   const scrollViewRef = useRef<ScrollView>(null);
+  const [keyboardHeight, setKeyboardHeight] = useState(0); // 키보드 높이 추적
   
   // 세션 모달 열기 요청 감지
   const shouldOpenSessionModal = useChatStore((s) => s.shouldOpenSessionModal);
@@ -285,6 +286,37 @@ export default function ChatScreen() {
     return () => clearTimeout(t);
   }, [messages, isLoading]);
 
+  /** ===== 키보드 올라올 때 자동 스크롤 ===== */
+  useEffect(() => {
+    const showSubscription = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
+      (e) => {
+        const height = e.endCoordinates.height;
+        setKeyboardHeight(height);
+        // 키보드가 올라올 때 약간의 지연 후 스크롤 (키보드 애니메이션과 동기화)
+        setTimeout(() => {
+          scrollViewRef.current?.scrollToEnd({ animated: true });
+        }, Platform.OS === "ios" ? 250 : 100);
+      }
+    );
+
+    const hideSubscription = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
+      () => {
+        setKeyboardHeight(0);
+        // 키보드가 내려갈 때도 마지막 메시지로 스크롤 (플로팅 바 + 입력창 위에 위치하도록)
+        setTimeout(() => {
+          scrollViewRef.current?.scrollToEnd({ animated: true });
+        }, Platform.OS === "ios" ? 250 : 100);
+      }
+    );
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
+
   /** ===== 카메라 / 작품 선택 ===== */
   const handleCameraPress = () => {
     if (!exhibitionId) return;
@@ -458,8 +490,16 @@ export default function ChatScreen() {
             <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
               <ScrollView
                 ref={scrollViewRef}
-                contentContainerStyle={{ padding: 16, paddingBottom: 50 }}
-                style={{ flex: 1, marginBottom: 92 }}
+                contentContainerStyle={{ 
+                  padding: 16, 
+                  paddingBottom: keyboardHeight > 0 
+                    ? keyboardHeight + 64 // 키보드 높이 + 입력창 높이(약 64px)
+                    : 64 // 키보드 없을 때: 입력창 높이만 (marginBottom: 92가 플로팅 바를 이미 고려함)
+                }}
+                style={{ 
+                  flex: 1, 
+                  marginBottom: keyboardHeight > 0 ? 0 : 92 // 키보드 없을 때: 플로팅 바 높이(92px) 고려
+                }}
                 keyboardShouldPersistTaps="handled"
                 onScrollBeginDrag={Keyboard.dismiss}
               >

@@ -75,28 +75,51 @@ export default function ExhibitionDetailPage() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
+    <View style={{ flex: 1, backgroundColor: "#fff" }}>
       <Stack.Screen
         options={{
           headerTitle: exhibition?.name || "전시 상세",
-          headerLeft: () => (
-            <TouchableOpacity
-              onPress={() => router.back()}
-              style={{ marginLeft: 16 }}
-            >
-              <MaterialIcons name="arrow-back-ios" size={20} color="#000" />
-            </TouchableOpacity>
-          ),
+          headerShown: false, // ExhibitionHeader 사용하므로 기본 헤더 숨김
         }}
       />
 
-      <ScrollView
-        contentContainerStyle={{
-          padding: 20,
-          paddingBottom: 64,
+      {/* ExhibitionHeader 아래 이전 버튼 */}
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          paddingHorizontal: 16,
+          paddingVertical: 0,
+          backgroundColor: "#fff",
+          marginTop: 0,
         }}
-        showsVerticalScrollIndicator={false}
       >
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 8,
+            paddingVertical: 12,
+          }}
+        >
+          <MaterialIcons name="arrow-back" size={24} color="#000" />
+          <Text style={{ fontSize: 16, fontWeight: "500", color: "#000" }}>
+            이전
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* 플로팅 바 위쪽 경계까지만 */}
+      <View style={{ flex: 1, marginBottom: 92 }}>
+        <ScrollView
+          contentContainerStyle={{
+            paddingHorizontal: 20,
+            paddingTop: 0,
+            paddingBottom: 24,
+          }}
+          showsVerticalScrollIndicator={false}
+        >
         {loading ? (
           <ActivityIndicator size="large" color="#007AFF" />
         ) : error ? (
@@ -121,18 +144,18 @@ export default function ExhibitionDetailPage() {
                   source={{ uri: exhibition.poster_url }}
                   style={{
                     width: "100%",
-                    height: 220,
-                    borderRadius: 16,
+                    height: 500,
+                    borderRadius: 0,
                     marginBottom: 20,
                   }}
-                  resizeMode="cover"
+                  resizeMode="contain"
                 />
               ) : (
                 <View
                   style={{
                     width: "100%",
                     height: 220,
-                    borderRadius: 16,
+                    borderRadius: 0,
                     backgroundColor: "#f0f0f0",
                     justifyContent: "center",
                     alignItems: "center",
@@ -248,7 +271,8 @@ export default function ExhibitionDetailPage() {
           )
         )}
       </ScrollView>
-    </SafeAreaView>
+      </View>
+    </View>
   );
 }
 

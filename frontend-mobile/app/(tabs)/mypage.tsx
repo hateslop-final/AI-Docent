@@ -19,6 +19,9 @@ const AESTHETIC_OPTIONS = [
   { key: "deep", title: "깊이 있게", desc: "맥락까지 알고 싶어요" },
 ] as const;
 
+// 예시 경로
+const ROBOT_IMAGE = require("@/assets/images/docent-robot-bg.png");
+
 export default function MyPageScreen() {
   const router = useRouter();
   const { user, userProfile, signOut, initialize, initialized } = useAuth();
@@ -51,17 +54,73 @@ export default function MyPageScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#f8f9fa" }} edges={["top"]}>
-      <ScrollView 
-        style={{ flex: 1 }} 
-        contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
-        showsVerticalScrollIndicator={false}
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#FAFAF8" }} edges={["top"]}>
+      {/* 🌟 전체 배경 레이어 */}
+      <Image
+        source={require("@/assets/images/my_bg.png")}
+        resizeMode="cover"
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          width: "200%",
+          height: "200%",
+          opacity: 0.85,
+        }}
+      />
+      <View 
+        style={{ flex: 1, backgroundColor: "transparent", padding: 20, paddingBottom: 120 }}
       >
         {/* 헤더 */}
-        <View style={{ marginBottom: 24 }}>
-          <Text style={{ fontSize: 28, fontWeight: "700", color: "#1a1a1a", marginBottom: 24 }}>
-            마이페이지
-          </Text>
+        <View style={{ marginBottom: 0 }}>
+          {/* 도슨트 카드 (말풍선 + 로봇) */}
+          <View
+            style={{
+              backgroundColor: "transparent",
+              borderRadius: 20,
+              padding: 20,
+              minHeight: 120,
+              flexDirection: "row",
+              alignItems: "center",
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.05,
+              shadowRadius: 8,
+              elevation: 2,
+              position: "relative",
+            }}
+          >
+            {/* 말풍선 */}
+            <View style={{ flex: 1, paddingRight: 10 , zIndex: 2}}>
+              <Text style={{ fontSize: 20, fontWeight: "600", marginBottom: 6 }}>
+                {user && userProfile?.nickname 
+                  ? `안녕하세요 ${userProfile.nickname}님!`
+                  : user && user.email
+                  ? `안녕하세요 ${user.email.split("@")[0]}님!`
+                  : "안녕하세요!"}
+              </Text>
+              <Text style={{ fontSize: 18, color: "#555", lineHeight:20 }}>
+                당신만의 작은 도슨트{"\n"}
+                저랑 함께 작품을 감상해보세요
+              </Text>
+            </View>
+
+            {/* 로봇 이미지 */}
+            <Image
+              source={ROBOT_IMAGE}
+              resizeMode="contain"
+              style={{
+                position: "absolute",
+                right: -100,
+                top: -110,
+                width: 400,
+                height: 400,
+              }}
+            />
+          </View>
+        </View>
 
           {/* 프로필 카드 */}
           {user ? (
@@ -69,7 +128,9 @@ export default function MyPageScreen() {
               backgroundColor: "#fff",
               borderRadius: 16,
               padding: 20,
-              marginBottom: 20,
+              marginBottom: 10,
+              position: 'relative',
+              overflow: 'visible',
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 2 },
               shadowOpacity: 0.05,
@@ -215,7 +276,6 @@ export default function MyPageScreen() {
               )}
             </View>
           )}
-        </View>
 
         {/* 메뉴 섹션 */}
         <View style={{ gap: 8 }}>
@@ -236,17 +296,6 @@ export default function MyPageScreen() {
                   elevation: 1,
                 }}
               >
-                <View style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 20,
-                  backgroundColor: "#f5f5f5",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginRight: 12,
-                }}>
-                  <MaterialIcons name="person" size={20} color="#000" />
-                </View>
                 <Text style={{ fontSize: 16, fontWeight: "500", color: "#1a1a1a", flex: 1 }}>
                   프로필
                 </Text>
@@ -268,17 +317,6 @@ export default function MyPageScreen() {
                   elevation: 1,
                 }}
               >
-                <View style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 20,
-                  backgroundColor: "#f5f5f5",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginRight: 12,
-                }}>
-                  <MaterialIcons name="settings" size={20} color="#000" />
-                </View>
                 <Text style={{ fontSize: 16, fontWeight: "500", color: "#1a1a1a", flex: 1 }}>
                   설정
                 </Text>
@@ -384,7 +422,7 @@ export default function MyPageScreen() {
                   alignItems: "center",
                   justifyContent: "center",
                   padding: 18,
-                  backgroundColor: "#000",
+                  backgroundColor: "#fff",
                   borderRadius: 12,
                   shadowColor: "#000",
                   shadowOffset: { width: 0, height: 4 },
@@ -393,8 +431,8 @@ export default function MyPageScreen() {
                   elevation: 4,
                 }}
               >
-                <MaterialIcons name="login" size={20} color="#fff" style={{ marginRight: 8 }} />
-                <Text style={{ fontSize: 18, fontWeight: "600", color: "#fff" }}>
+                <MaterialIcons name="login" size={20} color="#000" style={{ marginRight: 8 }} />
+                <Text style={{ fontSize: 18, fontWeight: "600", color: "#000" }}>
                   로그인
                 </Text>
               </Pressable>
@@ -484,7 +522,7 @@ export default function MyPageScreen() {
             </View>
           </View>
         </Modal>
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }

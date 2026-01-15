@@ -1,5 +1,5 @@
 import { View, Text, Pressable, Alert, ScrollView } from "react-native";
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, usePathname } from "expo-router"; 
 
@@ -47,8 +47,10 @@ export default function ExhibitionHeader() {
   const [showList, setShowList] = useState(false);
   const [isLoadingExhibitions, setIsLoadingExhibitions] = useState(false);
   
-  // 채팅 화면에서는 변경 불가
+  // 채팅 화면과 전시 상세 페이지에서는 변경 불가
   const isChatScreen = pathname?.includes("/chat");
+  const isExhibitionDetail = pathname?.includes("/exhibition/");
+  const isDisabled = isChatScreen || isExhibitionDetail;
 
   useEffect(() => {
     fetchGalleries().then(setGalleries).catch(console.error);
@@ -85,22 +87,64 @@ export default function ExhibitionHeader() {
     return exhibitions.some((e) => e.id === exhibitionId);
   }, [exhibitions, exhibitionId]);
 
-  /** ===== 세션 변경 감지 및 자동 저장 ===== */
+  /** ===== 통합 저장 로직: 세션/전시 변경 시 한 번만 저장 ===== */
   const prevSessionIdRef = useRef<number | null>(currentSessionId);
-  
+  const prevExhibitionIdRef = useRef<number | undefined>(exhibitionId);
+  const isSavingRef = useRef(false); // 🔒 통합 저장 중 플래그
+  const isProcessingChangeRef = useRef(false);
+
+  // 통합 저장 함수: 세션 변경 또는 전시 변경 시 한 번만 저장
+  const saveCurrentSession = useCallback(async (
+    targetExhibitionId: number,
+    targetSessionId: number | null,
+    reason: 'session' | 'exhibition'
+  ) => {
+    // 🔒 이미 저장 중이면 중복 저장 방지
+    if (isSavingRef.current) {
+      console.log('[ExhibitionHeader] 🔒 저장 중 - 중복 저장 방지');
+      return;
+    }
+
+    if (!user || !targetExhibitionId) return;
+
+    const currentMessages = getChatHistory(targetExhibitionId)?.messages || [];
+    if (currentMessages.length === 0) return;
+
+    isSavingRef.current = true; // 🔒 저장 시작
+
+    try {
+      const exhibitionName = exhibitions.find(e => e.id === targetExhibitionId)?.name || "알 수 없는 전시";
+      
+      console.log(`[ExhibitionHeader] 💾 통합 저장 시작 (${reason}):`, {
+        exhibitionId: targetExhibitionId,
+        sessionId: targetSessionId,
+        messageCount: currentMessages.length
+      });
+
+      await ChatDatabaseService.saveFullHistory(
+        user.id,
+        targetExhibitionId,
+        currentMessages,
+        exhibitionName,
+        targetSessionId,
+        age ?? null,
+        aesthetic ?? null
+      );
+
+      console.log(`[ExhibitionHeader] ✅ 통합 저장 완료 (${reason})`);
+    } catch (e) {
+      console.error(`[ExhibitionHeader] ❌ 통합 저장 실패 (${reason}):`, e);
+    } finally {
+      isSavingRef.current = false; // 🔒 저장 완료
+    }
+  }, [user, exhibitionId, age, aesthetic, getChatHistory, exhibitions]);
+
+  /** ===== 세션 변경 감지 ===== */
   useEffect(() => {
     const prevSessionId = prevSessionIdRef.current;
     const currentSessionId = useChatStore.getState().currentSessionId;
     
-    console.log('[ExhibitionHeader] session change check:', {
-      prevSessionId,
-      currentSessionId,
-      hasUser: !!user,
-      exhibitionId,
-      willSave: user && exhibitionId && prevSessionId !== null && prevSessionId !== currentSessionId && prevSessionId !== undefined
-    });
-    
-    // 세션이 변경되었고, 이전 세션이 있고, 로그인한 사용자인 경우 자동 저장 및 초기화
+    // 세션이 변경되었고, 이전 세션이 있고, 로그인한 사용자인 경우
     if (
       user &&
       exhibitionId &&
@@ -108,126 +152,81 @@ export default function ExhibitionHeader() {
       prevSessionId !== currentSessionId &&
       prevSessionId !== undefined
     ) {
-      const currentMessages = getChatHistory(exhibitionId)?.messages || [];
-      console.log('[ExhibitionHeader] saving session on change:', {
-        prevSessionId,
-        currentSessionId,
-        messageCount: currentMessages.length
+      // 통합 저장 함수 호출
+      saveCurrentSession(exhibitionId, prevSessionId, 'session').then(() => {
+        // 저장 완료 후 로컬 히스토리 초기화
+        useChatStore.getState().clearAllChatHistories();
       });
-      
-      (async () => {
-        try {
-          // 1. 로컬 세션 메시지들을 DB에 저장
-          if (currentMessages.length > 0) {
-            const exhibitionName = exhibitions.find(e => e.id === exhibitionId)?.name || "알 수 없는 전시";
-            await ChatDatabaseService.saveOnSessionChange(
-              user.id,
-              exhibitionId,
-              currentMessages,
-              exhibitionName,
-              prevSessionId,
-              age ?? null,
-              aesthetic ?? null
-            );
-          }
-        } catch (e) {
-          console.error('[ExhibitionHeader] ❌ auto-save session error:', e);
-          // 저장 실패해도 계속 진행
-        } finally {
-          // 2. 로컬 히스토리 초기화
-          useChatStore.getState().clearAllChatHistories();
-          
-          // 3. 새 세션이 이미 생성된 경우 (onCreateNew에서 생성한 경우)
-          // currentSessionId가 이미 설정되어 있으므로 그대로 사용
-          // 새 세션이 없는 경우는 chat.tsx에서 처리
-        }
-      })();
     }
     
     prevSessionIdRef.current = currentSessionId;
-  }, [currentSessionId, user, exhibitionId, age, aesthetic, getChatHistory, exhibitions, clearChatHistory]);
+  }, [currentSessionId, user, exhibitionId, age, aesthetic, getChatHistory, exhibitions]);
 
   /** ===== 전시 변경 감지 및 저장 여부 확인 ===== */
-const prevExhibitionIdRef = useRef<number | undefined>(exhibitionId);
-const isProcessingChangeRef = useRef(false);
+  useEffect(() => {
+    // 🔒 처리 중이면 재진입 차단
+    if (isProcessingChangeRef.current || isSavingRef.current) {
+      console.log('[EFFECT SKIP] processing or saving');
+      return;
+    }
 
-useEffect(() => {
-  // 🔒 처리 중이면 재진입 차단
-  if (isProcessingChangeRef.current) {
-    console.log('[EFFECT SKIP] processing');
-    return;
-  }
+    const prevId = prevExhibitionIdRef.current;
+    const currentId = exhibitionId;
 
-  const prevId = prevExhibitionIdRef.current;
-  const currentId = exhibitionId;
+    if (prevId !== undefined && prevId !== currentId) {
+      const hasHistoryNow = (() => {
+        const h = useChatStore.getState().getChatHistory(prevId);
+        return (h?.messages.length ?? 0) > 0;
+      })();
 
-  if (prevId !== undefined && prevId !== currentId) {
-    const hasHistoryNow = (() => {
-      const h = useChatStore.getState().getChatHistory(prevId);
-      return (h?.messages.length ?? 0) > 0;
-    })();
+      /* ================= 로그인 사용자 ================= */
+      if (hasHistoryNow && user) {
+        isProcessingChangeRef.current = true;
 
-    /* ================= 로그인 사용자 ================= */
-    if (hasHistoryNow && user) {
-      isProcessingChangeRef.current = true;
-
-      const currentMessages = getChatHistory(prevId)?.messages || [];
-      const currentExhibitionName =
-        exhibitions.find(e => e.id === prevId)?.name || "알 수 없는 전시";
-
-      (async () => {
-        try {
-          // 1. 현재 세션 메시지들을 DB에 저장
-          await ChatDatabaseService.saveOnExhibitionChange(
-            user.id,
-            prevId,
-            currentMessages,
-            currentExhibitionName,
-            currentSessionId,
-            age ?? null,
-            aesthetic ?? null
-          );
-        } catch (e) {
-          console.error('[ExhibitionHeader] auto-save error:', e);
-        } finally {
-          // 2. 로컬 히스토리 삭제
+        // 통합 저장 함수 호출
+        saveCurrentSession(prevId, currentSessionId, 'exhibition').then(() => {
+          // 저장 완료 후 로컬 히스토리 삭제
           useChatStore.getState().clearAllChatHistories();
           useChatStore.getState().setCurrentSessionId(null);
 
-          // 3. 새 전시에 기존 세션이 있는지 확인
+          // 새 전시에 기존 세션이 있는지 확인
           if (currentId !== undefined && !globalSessionCreationLock) {
-            try {
-              const existingSessions = await ChatDatabaseService.listSessions(user.id, currentId);
-              console.log('[ExhibitionHeader] 🔵 전시 변경 후 기존 세션 확인:', {
-                exhibitionId: currentId,
-                sessionCount: existingSessions.length,
-                sessions: existingSessions.map(s => ({ id: s.id, title: s.title }))
-              });
+            (async () => {
+              try {
+                const existingSessions = await ChatDatabaseService.listSessions(user.id, currentId);
+                console.log('[ExhibitionHeader] 🔵 전시 변경 후 기존 세션 확인:', {
+                  exhibitionId: currentId,
+                  sessionCount: existingSessions.length,
+                  sessions: existingSessions.map(s => ({ id: s.id, title: s.title }))
+                });
 
-              if (existingSessions.length > 0) {
-                // 기존 세션이 있으면 세션 모달 열기
-                console.log('[ExhibitionHeader] ✅ 기존 세션 존재 - 세션 모달 열기 요청');
-                useChatStore.getState().openSessionModal();
-              } else {
-                // 기존 세션이 없으면 로컬에서만 초기화 (DB에 세션 생성하지 않음)
-                // 실제로 메시지를 보낼 때 세션이 생성됨
-                console.log('[ExhibitionHeader] 🔵 기존 세션 없음 - 로컬만 초기화 (DB 세션 생성 안 함)');
+                if (existingSessions.length > 0) {
+                  // 기존 세션이 있으면 세션 모달 열기
+                  console.log('[ExhibitionHeader] ✅ 기존 세션 존재 - 세션 모달 열기 요청');
+                  useChatStore.getState().openSessionModal();
+                } else {
+                  // 기존 세션이 없으면 로컬에서만 초기화 (DB에 세션 생성하지 않음)
+                  // 실제로 메시지를 보낼 때 세션이 생성됨
+                  console.log('[ExhibitionHeader] 🔵 기존 세션 없음 - 로컬만 초기화 (DB 세션 생성 안 함)');
+                  useChatStore.getState().setCurrentSessionId(null);
+                }
+              } catch (e) {
+                console.error('[ExhibitionHeader] ❌ 세션 목록 확인 실패:', e);
+                // 실패 시에도 로컬만 초기화 (DB에 세션 생성하지 않음)
+                console.log('[ExhibitionHeader] 🔵 세션 목록 확인 실패 - 로컬만 초기화 (DB 세션 생성 안 함)');
                 useChatStore.getState().setCurrentSessionId(null);
+              } finally {
+                // ✅ 여기서만 확정
+                prevExhibitionIdRef.current = currentId;
+                isProcessingChangeRef.current = false;
               }
-            } catch (e) {
-              console.error('[ExhibitionHeader] ❌ 세션 목록 확인 실패:', e);
-              // 실패 시에도 로컬만 초기화 (DB에 세션 생성하지 않음)
-              console.log('[ExhibitionHeader] 🔵 세션 목록 확인 실패 - 로컬만 초기화 (DB 세션 생성 안 함)');
-              useChatStore.getState().setCurrentSessionId(null);
-            }
+            })();
+          } else {
+            prevExhibitionIdRef.current = currentId;
+            isProcessingChangeRef.current = false;
           }
-
-          // ✅ 여기서만 확정
-          prevExhibitionIdRef.current = currentId;
-          isProcessingChangeRef.current = false;
-        }
-      })();
-      return;
+        });
+        return;
     }
 
     /* ================= 비로그인 사용자 ================= */
@@ -362,8 +361,8 @@ useEffect(() => {
 
   /** ===== 변경 시도 로직 ===== */
   const handleAttemptChange = async (id: number) => {
-    // 채팅 화면에서는 변경 불가
-    if (isChatScreen) {
+    // 채팅 화면과 전시 상세 페이지에서는 변경 불가
+    if (isDisabled) {
       return;
     }
     
@@ -408,29 +407,10 @@ useEffect(() => {
       return;
     }
     
-    // 로그인한 사용자이고 기록이 있으면 저장 및 세션 확인
+    // 로그인한 사용자이고 기록이 있으면 세션 확인만 수행
+    // 저장은 useEffect에서 처리하므로 여기서는 저장하지 않음
     if (user && hasHistoryNow && exhibitionId) {
-      try {
-        // 1. 현재 세션 메시지들을 DB에 저장
-        await ChatDatabaseService.saveOnExhibitionChange(
-          user.id,
-          exhibitionId,
-          currentMessages,
-          currentExhibitionName,
-          currentSessionId,
-          age ?? null,
-          aesthetic ?? null
-        );
-      } catch (e) {
-        console.error('[ExhibitionHeader] auto-save error:', e);
-        // 저장 실패해도 계속 진행
-      }
-      
-      // 2. 로컬 히스토리 삭제
-      useChatStore.getState().clearAllChatHistories();
-      useChatStore.getState().setCurrentSessionId(null);
-      
-      // 3. 새 전시에 기존 세션이 있는지 확인
+      // 새 전시에 기존 세션이 있는지 확인
       if (id !== undefined && !globalSessionCreationLock) {
         try {
           const existingSessions = await ChatDatabaseService.listSessions(user.id, id);
@@ -477,14 +457,14 @@ useEffect(() => {
     <SafeAreaView edges={["top"]} style={{ backgroundColor: "#fff" }}>
       <View style={{ borderBottomWidth: 1, borderBottomColor: "#e5e5e5" }}>
         <Pressable
-          onPress={() => !isChatScreen && setShowList((v) => !v)}
+          onPress={() => !isDisabled && setShowList((v) => !v)}
           style={{ 
             flexDirection: "row", 
             justifyContent: "space-between", 
             padding: 16,
-            opacity: isChatScreen ? 0.6 : 1,
+            opacity: isDisabled ? 0.6 : 1,
           }}
-          disabled={isChatScreen}
+          disabled={isDisabled}
         >
           <View>
             <Text
@@ -520,10 +500,10 @@ useEffect(() => {
               </Text>
             )}
           </View>
-          {!isChatScreen && <Text>{showList ? "▲" : "▼"}</Text>}
+          {!isDisabled && <Text>{showList ? "▲" : "▼"}</Text>}
         </Pressable>
 
-        {showList && !isChatScreen && (
+        {showList && !isDisabled && (
           <View>
             <ScrollView style={{ maxHeight: 250 }}>
               {galleries.map((g) => (

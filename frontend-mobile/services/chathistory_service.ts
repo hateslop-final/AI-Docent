@@ -79,17 +79,32 @@ export const ChatDatabaseService = {
       });
     }
 
-    // 2. 해당 세션의 마지막 메시지 확인 (중복 방지)
-    const { data: lastDbMsg } = await supabase
+    // 2. 해당 세션의 기존 메시지 확인 (중복 방지)
+    const { data: existingMessages } = await supabase
       .from('chat_messages')
       .select('content, role, created_at')
       .eq('session_id', activeSessionId)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle(); // 데이터가 없을 수 있으므로 single() 대신 maybeSingle()
+      .order('created_at', { ascending: true });
 
     let newMessages = messages;
-    if (lastDbMsg) {
+    if (existingMessages && existingMessages.length > 0) {
+      // DB에 저장된 메시지 수와 전달받은 메시지 수 비교
+      // 전체 메시지가 이미 저장되어 있는지 확인
+      if (existingMessages.length >= messages.length) {
+        // DB 메시지와 전달받은 메시지의 마지막 부분이 일치하는지 확인
+        const dbLastMsg = existingMessages[existingMessages.length - 1];
+        const inputLastMsg = messages[messages.length - 1];
+        
+        if (dbLastMsg.content === inputLastMsg.text && 
+            dbLastMsg.role === (inputLastMsg.isUser ? 'user' : 'assistant')) {
+          // 전체 메시지가 이미 저장되어 있음
+          console.log('[ChatDatabaseService] 🔵 모든 메시지가 이미 저장되어 있음, 중복 저장 방지');
+          return activeSessionId;
+        }
+      }
+      
+      // 마지막 메시지 기준으로 새 메시지만 필터링
+      const lastDbMsg = existingMessages[existingMessages.length - 1];
       const lastIndex = messages.findLastIndex(m => 
         m.text === lastDbMsg.content && 
         (m.isUser ? 'user' : 'assistant') === lastDbMsg.role
@@ -99,7 +114,10 @@ export const ChatDatabaseService = {
       }
     }
 
-    if (newMessages.length === 0) return activeSessionId;
+    if (newMessages.length === 0) {
+      console.log('[ChatDatabaseService] 🔵 저장할 새 메시지 없음');
+      return activeSessionId;
+    }
 
     // 4. 새 메시지 저장 로직 (기존과 동일하되 activeSessionId 사용)
     const includeImage = await ensureImageUrlColumn();

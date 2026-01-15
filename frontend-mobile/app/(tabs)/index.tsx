@@ -84,49 +84,54 @@ export default function HomeScreen() {
         edges={["top"]}
         style={{ flex: 1, backgroundColor: "#fff" }}
       >
-        <ScrollView
-          contentContainerStyle={{
-            padding: 24,
-            paddingBottom: 120,
-            flexGrow: 1,
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-          showsVerticalScrollIndicator={false}
-        >
-          <MaterialIcons name="museum" size={64} color="#ccc" />
-          <Text
-            style={{
-              fontSize: 18,
-              fontWeight: "600",
-              color: "#666",
-              marginTop: 16,
+        {/* 플로팅 바 위쪽 경계까지만 */}
+        <View style={{ flex: 1, marginBottom: 92 }}>
+          <ScrollView
+            contentContainerStyle={{
+              padding: 24,
+              paddingBottom: 24,
+              flexGrow: 1,
+              justifyContent: "center",
+              alignItems: "center",
             }}
+            showsVerticalScrollIndicator={false}
           >
-            갤러리를 선택해주세요
-          </Text>
-        </ScrollView>
+            <MaterialIcons name="museum" size={64} color="#ccc" />
+            <Text
+              style={{
+                fontSize: 18,
+                fontWeight: "600",
+                color: "#666",
+                marginTop: 16,
+              }}
+            >
+              갤러리를 선택해주세요
+            </Text>
+          </ScrollView>
+        </View>
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: "#fff" }}>
-      <ScrollView
-        contentContainerStyle={{
-          padding: 24,
-          paddingTop: 0,
-          paddingBottom: 120,
-          flexGrow: 1,
-        }}
-        showsVerticalScrollIndicator={false}
-      >
+      {/* 플로팅 바 위쪽 경계까지만 */}
+      <View style={{ flex: 1, marginBottom: 92 }}>
+        <ScrollView
+          contentContainerStyle={{
+            padding: 24,
+            paddingTop: 0,
+            paddingBottom: 24,
+            flexGrow: 1,
+          }}
+          showsVerticalScrollIndicator={false}
+        >
         {/* 현재/과거 전시 탭 */}
         <View
           style={{
             flexDirection: "row",
             marginBottom: 12,
-            backgroundColor: "#f5f5f5",
+            backgroundColor: "#F6E6A6",
             borderRadius: 12,
             padding: 4,
           }}
@@ -280,6 +285,7 @@ export default function HomeScreen() {
           </View>
         )}
       </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
