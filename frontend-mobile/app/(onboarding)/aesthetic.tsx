@@ -28,9 +28,9 @@ export default function Aesthetic() {
       router.replace("/(onboarding)/age");
     } else if (gallery) {
       router.replace("/(tabs)");
-    } else if (selectedLevel) {
-      router.replace("/(onboarding)/gallery");
     }
+    // selectedLevel이 있어도 gallery가 undefined이면 리다이렉트하지 않음
+    // (갤러리에서 이전 버튼을 눌러 돌아온 경우 사용자가 다시 선택할 수 있도록)
   }, [age, selectedLevel, gallery, router, pathname]);
 
   return (

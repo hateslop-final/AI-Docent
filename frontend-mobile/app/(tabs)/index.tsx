@@ -131,9 +131,11 @@ export default function HomeScreen() {
           style={{
             flexDirection: "row",
             marginBottom: 12,
-            backgroundColor: "#F6E6A6",
+            backgroundColor: "#fff",
             borderRadius: 12,
             padding: 4,
+            borderWidth: 1,
+            borderColor: "#e5e5e5",
           }}
         >
           <Pressable

@@ -11,6 +11,7 @@ export default function GalleryScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const setGallery = useOnboardingStore((s) => s.setGallery);
+  const setAesthetic = useOnboardingStore((s) => s.setAesthetic);
   const selectedGallery = useOnboardingStore((s) => s.gallery);
   const age = useOnboardingStore((s) => s.age);
   const aesthetic = useOnboardingStore((s) => s.aesthetic);
@@ -65,7 +66,12 @@ export default function GalleryScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => {
+            // 갤러리 선택만 초기화하고 이전 화면(aesthetic)으로 돌아가기
+            // aesthetic 선택은 유지
+            setGallery(undefined);
+            router.replace("/(onboarding)/aesthetic");
+          }}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           style={{
             flexDirection: "row",
