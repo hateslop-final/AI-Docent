@@ -129,7 +129,7 @@ export default function Splash() {
         <Animated.View
           style={[
             styles.rectangle,
-            { backgroundColor: "#FF0606", left: 0 },
+            { backgroundColor: "#1a1a1a", left: 0 },
             {
               transform: [
                 { translateX: rect1MoveX },
@@ -145,7 +145,7 @@ export default function Splash() {
         <Animated.View
           style={[
             styles.rectangle,
-            { backgroundColor: "#AE2D35", right: 0 },
+            { backgroundColor: "#1a1a1a", right: 0 },
             {
               transform: [
                 { translateX: rect2MoveX },
@@ -160,10 +160,10 @@ export default function Splash() {
         {/* 중앙 텍스트 (기존 스타일로 복구) */}
         <Animated.View style={[styles.textContainer, { opacity: textOpacity }]}>
           <Animated.Text style={styles.title}>
-            내 안의 작은 미술관
+            나만의 AI DOCENT
           </Animated.Text>
           <Animated.Text style={styles.subtitle}>
-            AI Docent
+            CURAT
           </Animated.Text>
         </Animated.View>
       </View>
