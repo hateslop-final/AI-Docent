@@ -28,7 +28,6 @@ def load_model():
     
     try:
         import gc
-        import torch
         
         # 메모리 정리
         gc.collect()

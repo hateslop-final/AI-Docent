@@ -29,10 +29,21 @@ const getHostIP = (): string | null => {
 
 const getApiBase = (): string => {
   if (envApiBase) {
-    if (envApiBase.includes("127.0.0.1")) {
-      return envApiBase.replace("127.0.0.1", "localhost");
+    // 프로토콜이 없으면 https:// 추가 (프로덕션 환경)
+    let apiBase = envApiBase;
+    if (!apiBase.startsWith("http://") && !apiBase.startsWith("https://")) {
+      // 로컬 개발 환경이면 http, 그 외는 https
+      if (apiBase.includes("127.0.0.1") || apiBase.includes("localhost") || apiBase.includes("10.0.2.2")) {
+        apiBase = `http://${apiBase}`;
+      } else {
+        apiBase = `https://${apiBase}`;
+      }
     }
-    return envApiBase;
+    
+    if (apiBase.includes("127.0.0.1")) {
+      return apiBase.replace("127.0.0.1", "localhost");
+    }
+    return apiBase;
   }
   
   if (Platform.OS === "ios") {
