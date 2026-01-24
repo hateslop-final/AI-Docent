@@ -14,8 +14,8 @@ app = FastAPI(title="AI Docent Backend")
 # ================================
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["curat-backend-production.up.railway.app"],
-    allow_credentials=False,
+    allow_origins=["*"],  # 개발/프로덕션 모두 허용 (필요시 특정 도메인으로 제한)
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
