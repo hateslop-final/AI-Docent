@@ -23,7 +23,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 앱 코드 복사
 COPY app ./app
 
-# 포트 설정 (Render는 PORT 환경 변수를 자동으로 설정)
+# 포트 설정 (Fly.io는 PORT 환경 변수를 자동으로 설정)
 ENV PORT=8000
 EXPOSE 8000
 

@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     SUPABASE_SERVICE_ROLE_KEY: str = ""
     OPENAI_API_KEY: str = ""
     OPENAI_MODEL: str = "gpt-4o-mini"
-    CLIP_MODEL: str = "ViT-B/32"
+    CLIP_MODEL: str = "ViT-B/32"  # 데이터베이스 임베딩과 호환성 유지
     TAVILY_API_KEY: str = ""
     
     class Config:

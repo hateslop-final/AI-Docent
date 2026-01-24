@@ -27,17 +27,44 @@ def load_model():
     print(f"[Embedding] 디바이스: {_device}")
     
     try:
+        import gc
+        import torch
+        
+        # 메모리 정리
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        
+        print(f"[Embedding] 모델: {settings.CLIP_MODEL} 로딩 시작...")
         _model, _, _preprocess = open_clip.create_model_and_transforms(
             settings.CLIP_MODEL,        
             pretrained="laion2b_s34b_b79k"
         )
+        
+        # CPU 환경에서는 float32 유지 (float16은 CPU에서 제대로 작동하지 않을 수 있음)
+        # Render는 CPU만 사용하므로 float32 유지
         _model = _model.to(_device).eval()
+        
+        # 추가 메모리 정리
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        
         _model_loaded = True
         print("[Embedding] 모델 로딩 완료")
+    except RuntimeError as e:
+        error_msg = str(e)
+        _model_load_error = error_msg
+        print(f"[Embedding] 모델 로딩 실패 (RuntimeError): {error_msg}")
+        # 메모리 부족 에러인지 확인
+        if "out of memory" in error_msg.lower() or "cuda" in error_msg.lower():
+            raise RuntimeError(f"메모리 부족: 모델을 로드할 수 없습니다. {error_msg}")
+        raise RuntimeError(f"모델 로드 실패: {error_msg}")
     except Exception as e:
-        _model_load_error = str(e)
-        print(f"[Embedding] 모델 로딩 실패: {e}")
-        raise
+        error_msg = str(e)
+        _model_load_error = error_msg
+        print(f"[Embedding] 모델 로딩 실패: {error_msg}")
+        raise RuntimeError(f"모델 로드 실패: {error_msg}")
     
     return _model, _preprocess, _device
 
@@ -79,5 +106,8 @@ def image_to_embedding(image_bytes: bytes) -> list[float]:
     with torch.no_grad():
         feat = model.encode_image(image)
         feat = feat / feat.norm(dim=-1, keepdim=True)
+    
+    # CPU로 이동 후 numpy 변환
+    feat = feat.cpu()
     print("임베딩 완료")
-    return feat.cpu().numpy()[0].tolist()
+    return feat.numpy()[0].tolist()
