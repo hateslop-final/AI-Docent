@@ -24,4 +24,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app ./app
 
 # 프로덕션 모드 (--reload 제거, 워커 추가)
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+# Render는 PORT 환경 변수를 제공하므로 이를 사용
+CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1
