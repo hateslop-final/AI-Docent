@@ -23,6 +23,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 앱 코드 복사
 COPY app ./app
 
+# 포트 설정 (Render는 PORT 환경 변수를 자동으로 설정)
+ENV PORT=8000
+EXPOSE 8000
+
 # 프로덕션 모드 (--reload 제거, 워커 추가)
-# Render는 PORT 환경 변수를 제공하므로 이를 사용
-CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1
+# ENTRYPOINT 사용으로 JSON 형식 경고 방지 및 환경 변수 처리
+ENTRYPOINT ["sh", "-c"]
+CMD ["uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1"]
