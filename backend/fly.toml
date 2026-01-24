@@ -15,4 +15,4 @@ app = "ai-docent-backend"
   processes = ["app"]
 
 [vm]
-  memory_mb = 2048  # 1GB 메모리 (모델 로딩을 위해 필요)
+  memory_mb = 2048  # 2GB 메모리 (모델 로딩을 위해 필요)
