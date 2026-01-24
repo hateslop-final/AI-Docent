@@ -23,11 +23,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 앱 코드 복사
 COPY app ./app
 
-# 포트 설정 (Fly.io는 PORT 환경 변수를 자동으로 설정)
-ENV PORT=8000
-EXPOSE 8000
+# 포트 설정 (Railway/Fly.io는 PORT 환경 변수를 자동으로 설정)
+# Railway는 동적으로 포트를 할당하므로 PORT 환경 변수를 사용해야 함
+EXPOSE 8080
 
 # 프로덕션 모드 (--reload 제거, 워커 추가)
-# ENTRYPOINT 사용으로 JSON 형식 경고 방지 및 환경 변수 처리
+# Railway의 PORT 환경 변수를 사용 (기본값 8080)
 ENTRYPOINT ["sh", "-c"]
-CMD ["uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1"]
+CMD ["uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080} --workers 1"]
