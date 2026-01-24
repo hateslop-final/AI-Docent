@@ -43,7 +43,13 @@ async def log_requests(request: Request, call_next):
 
     return response
 
-
+@app.get("/")
+async def root():
+    return {
+        "message": "AI Docent Backend is running",
+        "docs": "/docs",
+        "health": "/health"
+    }
 # ================================
 # 🔥 Startup Event: 서버 시작 로그
 # ================================
