@@ -17,8 +17,8 @@ pillow==11.0.0
 numpy==2.1.1
 
 # 머신러닝 (이미지 임베딩)
-torch>=2.0.0
-open-clip-torch>=2.24.0
+# PyTorch는 Dockerfile에서 CPU 버전으로 먼저 설치됨
+open-clip-torch==2.24.0
 
 openai>=1.0.0
 python-dotenv>=1.0.00

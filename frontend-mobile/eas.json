@@ -8,13 +8,17 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "http://10.1.100.191:8000"
+        "EXPO_PUBLIC_API_BASE_URL": "https://ai-docent.onrender.com",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://usxwmintcwpygksjogae.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVzeHdtaW50Y3dweWdrc2pvZ2FlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY4NjYwOTUsImV4cCI6MjA4MjQ0MjA5NX0.qZBZ1fIxvh0Hv8uQ9CwJ-q8Ef_IpHicg5jHrDLhQ88E"
       }
     },
     "preview": {
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "http://127.0.0.1:8000"
+        "EXPO_PUBLIC_API_BASE_URL": "https://ai-docent.onrender.com",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://usxwmintcwpygksjogae.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVzeHdtaW50Y3dweWdrc2pvZ2FlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY4NjYwOTUsImV4cCI6MjA4MjQ0MjA5NX0.qZBZ1fIxvh0Hv8uQ9CwJ-q8Ef_IpHicg5jHrDLhQ88E"
       }
     },
     "production": {
@@ -24,7 +28,9 @@
         "image": "latest"
       },
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://api.example.com"
+        "EXPO_PUBLIC_API_BASE_URL": "https://ai-docent.onrender.com",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://usxwmintcwpygksjogae.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVzeHdtaW50Y3dweWdrc2pvZ2FlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY4NjYwOTUsImV4cCI6MjA4MjQ0MjA5NX0.qZBZ1fIxvh0Hv8uQ9CwJ-q8Ef_IpHicg5jHrDLhQ88E"
       }
     },
     "simulator": {
