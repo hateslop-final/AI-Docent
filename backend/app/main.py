@@ -5,7 +5,7 @@ import time
 from app.api.image_search import router as image_search_router
 from app.api.auth import router as auth_router
 from app.api.chatbot import router as chatbot_router
-from app.services.artworks.embedding_image import load_model, get_model_status, is_model_loaded
+from app.services.artworks.embedding_image import get_model_status, is_model_loaded
 
 app = FastAPI(title="AI Docent Backend")
 
@@ -45,25 +45,17 @@ async def log_requests(request: Request, call_next):
 
 
 # ================================
-# 🔥 Startup Event: 모델 사전 로드
+# 🔥 Startup Event: 서버 시작 로그
 # ================================
 @app.on_event("startup")
 async def startup_event():
-    """서버 시작 시 모델 로드"""
+    """서버 시작 이벤트"""
     print("=" * 80)
     print("[SERVER] 서버 시작 중...")
-    
-    # 모델 로드 시도 (실패해도 서버는 시작됨)
-    try:
-        load_model()
-        print("[SERVER] ✅ 이미지 임베딩 모델 로드 완료")
-    except Exception as e:
-        print(f"[SERVER] ⚠️ 이미지 임베딩 모델 로드 실패: {e}")
-        print("[SERVER] ⚠️ 이미지 검색 기능은 사용할 수 없습니다. 다른 기능은 정상 작동합니다.")
-    
+    print("[SERVER] ⚠️ 메모리 제한으로 인해 모델은 지연 로딩됩니다 (첫 요청 시 로드)")
     print("[SERVER] 등록된 엔드포인트:")
     print("[SERVER]   - POST /chatbot/")
-    print("[SERVER]   - POST /image-search/")
+    print("[SERVER]   - POST /image-search/ (첫 요청 시 모델 로드)")
     print("[SERVER]   - DELETE /auth/withdraw")
     print("[SERVER]   - GET /health (헬스체크)")
     print("=" * 80)
