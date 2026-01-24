@@ -1,4 +1,4 @@
-import { View, Text, TextInput, Pressable, Alert, ScrollView } from "react-native";
+import { View, Text, TextInput, Pressable, Alert, ScrollView, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { useState, useEffect, useRef } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -61,51 +61,36 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }} edges={["top"]}>
+    <SafeAreaView style={styles.container} edges={["top"]}>
       <ScrollView 
-        style={{ flex: 1 }} 
-        contentContainerStyle={{ padding: 24, paddingBottom: 40 }}
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
         {/* 헤더 */}
         <Pressable
           onPress={() => router.back()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            marginBottom: 32,
-          }}
+          style={styles.backButton}
         >
-          <MaterialIcons name="arrow-back" size={24} color="#000" />
-          <Text style={{ marginLeft: 8, fontSize: 16 }}>뒤로</Text>
+          <MaterialIcons name="arrow-back" size={24} color="#1a1a1a" />
+          <Text style={styles.backButtonText}>뒤로</Text>
         </Pressable>
 
         {/* 제목 */}
-        <Text style={{ fontSize: 28, fontWeight: "700", marginBottom: 8 }}>
-          로그인
-        </Text>
-        <Text style={{ fontSize: 16, color: "#666", marginBottom: 32 }}>
+        <Text style={styles.title}>로그인</Text>
+        <Text style={styles.subtitle}>
           AI 도슨트에 오신 것을 환영합니다
         </Text>
 
         {/* 입력 폼 */}
-        <View style={{ gap: 16, marginBottom: 24 }}>
+        <View style={styles.formContainer}>
           <View>
-            <Text style={{ fontSize: 14, fontWeight: "600", marginBottom: 8, color: "#333" }}>
-              이메일
-            </Text>
+            <Text style={styles.label}>이메일</Text>
             <TextInput
-              style={{
-                borderWidth: 1,
-                borderColor: "#e5e5e5",
-                borderRadius: 12,
-                paddingHorizontal: 16,
-                paddingVertical: 12,
-                fontSize: 16,
-                backgroundColor: "#f9f9f9",
-              }}
+              style={styles.input}
               placeholder="이메일을 입력하세요"
+              placeholderTextColor="#999"
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -115,20 +100,11 @@ export default function LoginScreen() {
           </View>
 
           <View>
-            <Text style={{ fontSize: 14, fontWeight: "600", marginBottom: 8, color: "#333" }}>
-              비밀번호
-            </Text>
+            <Text style={styles.label}>비밀번호</Text>
             <TextInput
-              style={{
-                borderWidth: 1,
-                borderColor: "#e5e5e5",
-                borderRadius: 12,
-                paddingHorizontal: 16,
-                paddingVertical: 12,
-                fontSize: 16,
-                backgroundColor: "#f9f9f9",
-              }}
+              style={styles.input}
               placeholder="비밀번호를 입력하세요"
+              placeholderTextColor="#999"
               value={password}
               onChangeText={setPassword}
               secureTextEntry
@@ -141,45 +117,34 @@ export default function LoginScreen() {
         <Pressable
           onPress={handleLogin}
           disabled={loading}
-          style={{
-            backgroundColor: loading ? "#ccc" : "#007AFF",
-            borderRadius: 12,
-            paddingVertical: 16,
-            alignItems: "center",
-            marginBottom: 24,
-          }}
+          style={[styles.loginButton, loading && styles.loginButtonDisabled]}
         >
-          <Text style={{ fontSize: 16, fontWeight: "600", color: "#fff" }}>
+          <Text style={styles.loginButtonText}>
             {loading ? "로그인 중..." : "로그인"}
           </Text>
         </Pressable>
 
         {/* 구분선 */}
-        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 24 }}>
-          <View style={{ flex: 1, height: 1, backgroundColor: "#e5e5e5" }} />
-          <Text style={{ marginHorizontal: 16, fontSize: 14, color: "#666" }}>또는</Text>
-          <View style={{ flex: 1, height: 1, backgroundColor: "#e5e5e5" }} />
+        <View style={styles.divider}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>또는</Text>
+          <View style={styles.dividerLine} />
         </View>
 
         {/* 구글 로그인 버튼 */}
-        <View style={{ marginBottom: 16 }}>
+        <View style={styles.googleButtonContainer}>
           <GoogleLoginButton />
         </View>
 
         {/* 회원가입 링크 */}
         <Pressable
           onPress={() => router.push("/mypage/signup")}
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "center",
-            paddingVertical: 12,
-          }}
+          style={styles.signupLink}
         >
-          <Text style={{ fontSize: 14, color: "#666" }}>
+          <Text style={styles.signupLinkText}>
             계정이 없으신가요?{" "}
           </Text>
-          <Text style={{ fontSize: 14, color: "#007AFF", fontWeight: "600" }}>
+          <Text style={styles.signupLinkButton}>
             회원가입
           </Text>
         </Pressable>
@@ -187,3 +152,107 @@ export default function LoginScreen() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#fafafa",
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 24,
+    paddingBottom: 40,
+  },
+  backButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 32,
+  },
+  backButtonText: {
+    marginLeft: 8,
+    fontSize: 16,
+    color: "#1a1a1a",
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: "700",
+    marginBottom: 8,
+    color: "#1a1a1a",
+  },
+  subtitle: {
+    fontSize: 16,
+    color: "#666",
+    marginBottom: 32,
+  },
+  formContainer: {
+    gap: 16,
+    marginBottom: 24,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 8,
+    color: "#1a1a1a",
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 15,
+    backgroundColor: "#ffffff",
+    color: "#1a1a1a",
+  },
+  loginButton: {
+    backgroundColor: "#1a1a1a",
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  loginButtonDisabled: {
+    backgroundColor: "#ccc",
+  },
+  loginButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#ffffff",
+  },
+  divider: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#e0e0e0",
+  },
+  dividerText: {
+    marginHorizontal: 16,
+    fontSize: 14,
+    color: "#666",
+  },
+  googleButtonContainer: {
+    marginBottom: 16,
+  },
+  signupLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+  },
+  signupLinkText: {
+    fontSize: 14,
+    color: "#666",
+  },
+  signupLinkButton: {
+    fontSize: 14,
+    color: "#1a1a1a",
+    fontWeight: "600",
+    textDecorationLine: "underline",
+  },
+});

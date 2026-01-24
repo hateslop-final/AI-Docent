@@ -1,0 +1,16 @@
+---
+alwaysApply: false
+---
+아래 디자인 토큰에 따라 화면을 만들어줘. ChatGPT 같은 스타일로 만들고싶어 무채색 계열의 모던하고 깔끔한 톤을 원해.
+스타일은 그냥 스타일쉿에 직접 정의해줘
+
+const THEME = {
+  primary: "#1a1a1a",        // 다크 그레이/블랙
+  primaryLight: "#f5f5f5",   // 연한 그레이 배경
+  border: "#e0e0e0",         // 보더 (비활성 인디케이터)
+  borderSelected: "#4a4a4a", // 선택된 항목 보더 (부드러운 다크 그레이)
+  background: "#fafafa",     // 화면 배경색 (살짝 어두운 회색)
+  cardBackground: "#ffffff", // 카드 배경색 (순백)
+  text: "#1a1a1a",           // 텍스트
+  textSecondary: "#666",     // 보조 텍스트
+};

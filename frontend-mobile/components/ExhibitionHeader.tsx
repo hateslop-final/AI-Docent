@@ -1,7 +1,8 @@
-import { View, Text, Pressable, Alert, ScrollView } from "react-native";
+import { View, Text, Pressable, Alert, ScrollView, Animated } from "react-native";
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter, usePathname } from "expo-router"; 
+import { useRouter, usePathname } from "expo-router";
+import { useTheme } from "@/components/ThemeProvider"; 
 
 import { useOnboardingStore } from "@/store/onboarding.store";
 import { useAuth } from "@/store/auth.store";
@@ -43,9 +44,19 @@ export default function ExhibitionHeader() {
   /** ===== 로컬 상태 ===== */
   const [galleries, setGalleries] = useState<Gallery[]>([]);
   const [exhibitions, setExhibitions] = useState<Exhibition[]>([]);
+  const exhibitionsRef = useRef<Exhibition[]>([]); // 최신 exhibitions 참조용
   const [selectedGalleryId, setSelectedGalleryId] = useState<number | null>(galleryId ?? null);
   const [showList, setShowList] = useState(false);
   const [isLoadingExhibitions, setIsLoadingExhibitions] = useState(false);
+  
+  // 애니메이션 값
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+
+  // exhibitions ref 업데이트
+  useEffect(() => {
+    exhibitionsRef.current = exhibitions;
+  }, [exhibitions]);
   
   // 채팅 화면과 전시 상세 페이지에서는 변경 불가
   const isChatScreen = pathname?.includes("/chat");
@@ -55,6 +66,39 @@ export default function ExhibitionHeader() {
   useEffect(() => {
     fetchGalleries().then(setGalleries).catch(console.error);
   }, []);
+
+  // 애니메이션 효과
+  useEffect(() => {
+    if (showList) {
+      // 펼치기 애니메이션
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      // 접기 애니메이션
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 0,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [showList]);
 
   useEffect(() => {
     if (galleryId !== undefined && galleryId !== selectedGalleryId) {
@@ -107,13 +151,16 @@ export default function ExhibitionHeader() {
 
     if (!user || !targetExhibitionId) return;
 
-    const currentMessages = getChatHistory(targetExhibitionId)?.messages || [];
+    // 함수 내부에서 직접 가져오기 (dependency 최적화)
+    const currentMessages = useChatStore.getState().getChatHistory(targetExhibitionId)?.messages || [];
     if (currentMessages.length === 0) return;
 
     isSavingRef.current = true; // 🔒 저장 시작
 
     try {
-      const exhibitionName = exhibitions.find(e => e.id === targetExhibitionId)?.name || "알 수 없는 전시";
+      // exhibitions는 ref에서 최신 값 가져오기 (dependency 최적화)
+      const currentExhibitions = exhibitionsRef.current;
+      const exhibitionName = currentExhibitions.find(e => e.id === targetExhibitionId)?.name || "알 수 없는 전시";
       
       console.log(`[ExhibitionHeader] 💾 통합 저장 시작 (${reason}):`, {
         exhibitionId: targetExhibitionId,
@@ -137,7 +184,7 @@ export default function ExhibitionHeader() {
     } finally {
       isSavingRef.current = false; // 🔒 저장 완료
     }
-  }, [user, exhibitionId, age, aesthetic, getChatHistory, exhibitions]);
+  }, [user, age, aesthetic]);
 
   /** ===== 세션 변경 감지 ===== */
   useEffect(() => {
@@ -160,7 +207,7 @@ export default function ExhibitionHeader() {
     }
     
     prevSessionIdRef.current = currentSessionId;
-  }, [currentSessionId, user, exhibitionId, age, aesthetic, getChatHistory, exhibitions]);
+  }, [currentSessionId, user, exhibitionId, saveCurrentSession]);
 
   /** ===== 전시 변경 감지 및 저장 여부 확인 ===== */
   useEffect(() => {
@@ -172,6 +219,17 @@ export default function ExhibitionHeader() {
 
     const prevId = prevExhibitionIdRef.current;
     const currentId = exhibitionId;
+
+    // prevId가 아직 설정되지 않았거나, currentId가 없으면 스킵
+    if (prevId === undefined || currentId === undefined) {
+      prevExhibitionIdRef.current = currentId;
+      return;
+    }
+
+    // 같은 ID면 스킵 (변경 없음)
+    if (prevId === currentId) {
+      return;
+    }
 
     if (prevId !== undefined && prevId !== currentId) {
       const hasHistoryNow = (() => {
@@ -341,12 +399,9 @@ export default function ExhibitionHeader() {
 }, [
   exhibitionId,
   user,
-  age,
-  aesthetic,
-  getChatHistory,
   currentSessionId,
-  exhibitions,
   setExhibition,
+  saveCurrentSession,
 ]);
   /** ===== 실제 선택 반영 로직 (함수 분리) ===== */
   const confirmSelection = (id: number) => {
@@ -452,10 +507,11 @@ export default function ExhibitionHeader() {
 
 
   const headerTitle = galleries.find((g) => g.id === galleryId)?.name ?? "갤러리 선택";
+  const { colors } = useTheme();
 
   return (
-    <SafeAreaView edges={["top"]} style={{ backgroundColor: "#fff" }}>
-      <View style={{ borderBottomWidth: 1, borderBottomColor: "#e5e5e5" }}>
+    <SafeAreaView edges={["top"]} style={{ backgroundColor: colors.cardBackground }}>
+      <View style={{ borderBottomWidth: 1, borderBottomColor: colors.border }}>
         <Pressable
           onPress={() => !isDisabled && setShowList((v) => !v)}
           style={{ 
@@ -470,7 +526,7 @@ export default function ExhibitionHeader() {
             <Text
               style={{
                 fontSize: 12,
-                color: "#666",
+                color: colors.textSecondary,
               }}
             >
               현재 갤러리
@@ -480,7 +536,7 @@ export default function ExhibitionHeader() {
               style={{
                 fontSize: 16,
                 fontWeight: "600",
-                color: "#111",
+                color: colors.text,
               }}
             >
               {galleries.find((g) => g.id === galleryId)?.name ?? "갤러리 선택"}
@@ -492,7 +548,7 @@ export default function ExhibitionHeader() {
                 style={{
                   fontSize: 13,
                   fontWeight: "500",
-                  color: "#666",
+                  color: colors.textSecondary,
                   marginTop: 2,
                 }}
               >
@@ -500,23 +556,35 @@ export default function ExhibitionHeader() {
               </Text>
             )}
           </View>
-          {!isDisabled && <Text>{showList ? "▲" : "▼"}</Text>}
+          {!isDisabled && <Text style={{ color: colors.text }}>{showList ? "▲" : "▼"}</Text>}
         </Pressable>
 
         {showList && !isDisabled && (
-          <View>
-            <ScrollView style={{ maxHeight: 250 }}>
+          <Animated.View
+            style={{
+              opacity: opacityAnim,
+              transform: [
+                {
+                  translateY: slideAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [-20, 0],
+                  }),
+                },
+              ],
+            }}
+          >
+            <ScrollView style={{ maxHeight: 250, backgroundColor: colors.cardBackground }}>
               {galleries.map((g) => (
                     <Pressable
                       key={g.id}
                   onPress={() => handleAttemptChange(g.id)}
-                      style={{ padding: 16, backgroundColor: selectedGalleryId === g.id ? "#f0f7ff" : "#fff" }}
+                      style={{ padding: 16, backgroundColor: selectedGalleryId === g.id ? colors.primaryLight : colors.cardBackground }}
                     >
-                      <Text>{g.name}</Text>
+                      <Text style={{ color: colors.text }}>{g.name}</Text>
                     </Pressable>
                   ))}
             </ScrollView>
-          </View>
+          </Animated.View>
         )}
       </View>
     </SafeAreaView>

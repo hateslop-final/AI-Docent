@@ -48,7 +48,7 @@ export default function FeaturesScreen() {
         {features.map((feature, index) => (
           <View key={index} style={styles.featureCard}>
             <View style={styles.iconContainer}>
-              <MaterialIcons name={feature.icon as any} size={32} color="#007AFF" />
+              <MaterialIcons name={feature.icon as any} size={32} color="#1a1a1a" />
             </View>
             <View style={styles.textContainer}>
               <Text style={styles.featureTitle}>{feature.title}</Text>
@@ -64,7 +64,7 @@ export default function FeaturesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: "#fafafa",
   },
   header: {
     flexDirection: "row",
@@ -73,7 +73,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#e5e5e5",
+    borderBottomColor: "#f0f0f0",
+    backgroundColor: "#ffffff",
   },
   backButton: {
     padding: 4,
@@ -92,7 +93,7 @@ const styles = StyleSheet.create({
   },
   featureCard: {
     flexDirection: "row",
-    backgroundColor: "#fff",
+    backgroundColor: "#ffffff",
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
@@ -101,12 +102,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
+    borderWidth: 1,
+    borderColor: "#f0f0f0",
   },
   iconContainer: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: "#f0f7ff",
+    backgroundColor: "#f5f5f5",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 16,

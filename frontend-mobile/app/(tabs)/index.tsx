@@ -1,13 +1,15 @@
-import { ScrollView, View, Text, Pressable, Image } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { ScrollView, View, Text, Pressable, ImageBackground } from "react-native";
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
 import { useOnboardingStore } from "../../store/onboarding.store";
 import { fetchExhibitions, Exhibition } from "@/services/exhibition";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { useTheme } from "@/components/ThemeProvider";
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { colors } = useTheme();
   const galleryId = useOnboardingStore((s) => s.gallery);
   const exhibitionId = useOnboardingStore((s) => s.exhibition);
   const setExhibition = useOnboardingStore((s) => s.setExhibition);
@@ -80,10 +82,7 @@ export default function HomeScreen() {
 
   if (!galleryId) {
     return (
-      <SafeAreaView
-        edges={["top"]}
-        style={{ flex: 1, backgroundColor: "#fff" }}
-      >
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
         {/* 플로팅 바 위쪽 경계까지만 */}
         <View style={{ flex: 1, marginBottom: 92 }}>
           <ScrollView
@@ -96,12 +95,12 @@ export default function HomeScreen() {
             }}
             showsVerticalScrollIndicator={false}
           >
-            <MaterialIcons name="museum" size={64} color="#ccc" />
+            <MaterialIcons name="museum" size={64} color={colors.textSecondary} />
             <Text
               style={{
                 fontSize: 18,
                 fontWeight: "600",
-                color: "#666",
+                color: colors.textSecondary,
                 marginTop: 16,
               }}
             >
@@ -109,33 +108,34 @@ export default function HomeScreen() {
             </Text>
           </ScrollView>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: "#fff" }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       {/* 플로팅 바 위쪽 경계까지만 */}
-      <View style={{ flex: 1, marginBottom: 92 }}>
+      <View style={{ flex: 1 }}>
         <ScrollView
           contentContainerStyle={{
-            padding: 24,
-            paddingTop: 0,
+            paddingHorizontal: 24,
+            paddingTop: 16,
             paddingBottom: 24,
             flexGrow: 1,
           }}
-          showsVerticalScrollIndicator={false}
+          showsVerticalScrollIndicator={true}
         >
+
         {/* 현재/과거 전시 탭 */}
         <View
           style={{
             flexDirection: "row",
             marginBottom: 12,
-            backgroundColor: "#fff",
+            backgroundColor: colors.cardBackground,
             borderRadius: 12,
             padding: 4,
             borderWidth: 1,
-            borderColor: "#e5e5e5",
+            borderColor: colors.border,
           }}
         >
           <Pressable
@@ -144,7 +144,7 @@ export default function HomeScreen() {
               flex: 1,
               paddingVertical: 12,
               borderRadius: 8,
-              backgroundColor: activeTab === "current" ? "#fff" : "transparent",
+              backgroundColor: activeTab === "current" ? colors.cardBackground : "transparent",
               alignItems: "center",
             }}
           >
@@ -152,7 +152,7 @@ export default function HomeScreen() {
               style={{
                 fontSize: 15,
                 fontWeight: activeTab === "current" ? "600" : "500",
-                color: activeTab === "current" ? "#000" : "#666",
+                color: activeTab === "current" ? colors.text : colors.textSecondary,
               }}
             >
               현재 전시 ({currentExhibitions.length})
@@ -164,7 +164,7 @@ export default function HomeScreen() {
               flex: 1,
               paddingVertical: 12,
               borderRadius: 8,
-              backgroundColor: activeTab === "past" ? "#fff" : "transparent",
+              backgroundColor: activeTab === "past" ? colors.cardBackground : "transparent",
               alignItems: "center",
             }}
           >
@@ -172,7 +172,7 @@ export default function HomeScreen() {
               style={{
                 fontSize: 15,
                 fontWeight: activeTab === "past" ? "600" : "500",
-                color: activeTab === "past" ? "#000" : "#666",
+                color: activeTab === "past" ? colors.text : colors.textSecondary,
               }}
             >
               과거 전시 ({pastExhibitions.length})
@@ -190,86 +190,110 @@ export default function HomeScreen() {
             }}
           >
             {displayedExhibitions.map((exh) => {
-              const isSelected = exhibitionId === exh.id;
               return (
                 <Pressable
                   key={exh.id}
                   onPress={() => handleExhibitionSelect(exh.id)}
                   style={{
                     width: "47%",
-                    backgroundColor: "#fff",
-                    borderRadius: 16,
-                    padding: 16,
-                    borderWidth: 2,
-                    borderColor: isSelected ? "#007AFF" : "#e5e5e5",
-                    shadowColor: "#000",
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.05,
-                    shadowRadius: 4,
-                    elevation: 2,
+                    height: 240,
                     overflow: "hidden",
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 8,
+                    elevation: 4,
                   }}
                 >
                   {exh.poster_url ? (
-                    <Image
+                    <ImageBackground
+                      key={`exhibition-${exh.id}-poster`}
                       source={{ uri: exh.poster_url }}
                       style={{
                         width: "100%",
-                        height: 150,
-                        borderRadius: 12,
-                        marginBottom: 12,
+                        height: "100%",
+                        justifyContent: "flex-end",
                       }}
                       resizeMode="cover"
-                    />
+                    >
+                      {/* 그라디언트 오버레이 */}
+                      <LinearGradient
+                        colors={["transparent", "rgba(0,0,0,0.4)", "rgba(0,0,0,0.85)"]}
+                        locations={[0, 0.5, 1]}
+                        style={{
+                          position: "absolute",
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          height: "50%",
+                        }}
+                      />
+                      
+                      {/* 텍스트 컨테이너 */}
+                      <View style={{ padding: 16, zIndex: 1 }}>
+                        <Text
+                          style={{
+                            fontSize: 16,
+                            fontWeight: "700",
+                            color: "#fff",
+                            marginBottom: 6,
+                            textShadowColor: "rgba(0, 0, 0, 0.5)",
+                            textShadowOffset: { width: 0, height: 1 },
+                            textShadowRadius: 4,
+                          }}
+                          numberOfLines={2}
+                        >
+                          {exh.name}
+                        </Text>
+                        {(exh.start_date || exh.end_date) && (
+                          <Text
+                            style={{
+                              fontSize: 11,
+                              color: "rgba(255, 255, 255, 0.9)",
+                              textShadowColor: "rgba(0, 0, 0, 0.5)",
+                              textShadowOffset: { width: 0, height: 1 },
+                              textShadowRadius: 3,
+                            }}
+                            numberOfLines={1}
+                          >
+                            {exh.start_date && exh.end_date
+                              ? `${formatDate(exh.start_date)} - ${formatDate(
+                                  exh.end_date
+                                )}`
+                              : exh.start_date
+                              ? `${formatDate(exh.start_date)}부터`
+                              : exh.end_date
+                              ? `${formatDate(exh.end_date)}까지`
+                              : ""}
+                          </Text>
+                        )}
+                      </View>
+                    </ImageBackground>
                   ) : (
                     <View
                       style={{
                         width: "100%",
-                        height: 150,
-                        borderRadius: 12,
+                        height: "100%",
                         backgroundColor: "#f0f0f0",
                         justifyContent: "center",
                         alignItems: "center",
-                        marginBottom: 12,
                       }}
                     >
-                      <MaterialIcons name="photo" size={32} color="#bbb" />
-                    </View>
-                  )}
-                  <Text
-                    style={{
-                      fontSize: 16,
-                      fontWeight: "700",
-                      color: isSelected ? "#007AFF" : "#000",
-                      marginBottom: 8,
-                    }}
-                    numberOfLines={2}
-                  >
-                    {exh.name}
-                  </Text>
-                  {(exh.start_date || exh.end_date) && (
-                    <Text
-                      style={{ fontSize: 12, color: "#666" }}
-                      numberOfLines={1}
-                    >
-                      {exh.start_date && exh.end_date
-                        ? `${formatDate(exh.start_date)} - ${formatDate(
-                            exh.end_date
-                          )}`
-                        : exh.start_date
-                        ? `${formatDate(exh.start_date)}부터`
-                        : exh.end_date
-                        ? `${formatDate(exh.end_date)}까지`
-                        : ""}
-                    </Text>
-                  )}
-                  {isSelected && (
-                    <View style={{ marginTop: 8, alignItems: "flex-end" }}>
-                      <MaterialIcons
-                        name="check-circle"
-                        size={20}
-                        color="#007AFF"
-                      />
+                      <MaterialIcons name="photo" size={48} color="#bbb" />
+                      <Text
+                        style={{
+                          position: "absolute",
+                          bottom: 16,
+                          left: 16,
+                          right: 16,
+                          fontSize: 16,
+                          fontWeight: "700",
+                          color: "#666",
+                        }}
+                        numberOfLines={2}
+                      >
+                        {exh.name}
+                      </Text>
                     </View>
                   )}
                 </Pressable>
@@ -278,8 +302,8 @@ export default function HomeScreen() {
           </View>
         ) : (
           <View style={{ alignItems: "center", paddingVertical: 40 }}>
-            <MaterialIcons name="event-busy" size={48} color="#ccc" />
-            <Text style={{ fontSize: 16, color: "#666", marginTop: 12 }}>
+            <MaterialIcons name="event-busy" size={48} color={colors.textSecondary} />
+            <Text style={{ fontSize: 16, color: colors.textSecondary, marginTop: 12 }}>
               {activeTab === "current"
                 ? "진행 중인 전시가 없습니다"
                 : "과거 전시가 없습니다"}
@@ -288,6 +312,6 @@ export default function HomeScreen() {
         )}
       </ScrollView>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }

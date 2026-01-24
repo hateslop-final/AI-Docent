@@ -2,6 +2,7 @@ import { View, TextInput, Pressable, StyleSheet, Platform, Animated } from "reac
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Keyboard } from "react-native";
 import { useEffect, useState, useRef, useLayoutEffect } from "react";
+import { useTheme } from "@/components/ThemeProvider";
 
 interface ChatInputProps {
   message: string;
@@ -24,9 +25,10 @@ export default function ChatInput({
   isPastExhibition,
   placeholder,
 }: ChatInputProps) {
+  const { colors } = useTheme();
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
-  const floatingTabBarHeight = 92;
+  const floatingTabBarHeight = 70; // FloatingTabBar 높이
   const bottomAnim = useRef(new Animated.Value(floatingTabBarHeight)).current;
   const isInitialMountRef = useRef(true);
   const hasSetInitialValueRef = useRef(false);
@@ -40,10 +42,8 @@ export default function ChatInput({
   }, []);
 
   useEffect(() => {
-    // 리스너 등록 전에 발생하는 키보드 이벤트 무시를 위한 플래그
     let isListenerReady = false;
     
-    // 리스너가 준비될 때까지 약간의 지연 (마운트 시 발생하는 이벤트 무시)
     const readyTimer = setTimeout(() => {
       isListenerReady = true;
     }, 100);
@@ -51,11 +51,10 @@ export default function ChatInput({
     const showSubscription = Keyboard.addListener(
       Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
       (e) => {
-        if (!isListenerReady) return; // 리스너 준비 전 이벤트 무시
+        if (!isListenerReady) return;
         
         setIsKeyboardVisible(true);
         setKeyboardHeight(e.endCoordinates.height);
-        // 초기 마운트 시에는 애니메이션 없이 즉시 설정
         if (isInitialMountRef.current) {
           bottomAnim.setValue(e.endCoordinates.height);
           isInitialMountRef.current = false;
@@ -71,11 +70,10 @@ export default function ChatInput({
     const hideSubscription = Keyboard.addListener(
       Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
       () => {
-        if (!isListenerReady) return; // 리스너 준비 전 이벤트 무시
+        if (!isListenerReady) return;
         
         setIsKeyboardVisible(false);
         setKeyboardHeight(0);
-        // 초기 마운트 시에는 애니메이션 없이 즉시 설정
         if (isInitialMountRef.current) {
           bottomAnim.setValue(floatingTabBarHeight);
           isInitialMountRef.current = false;
@@ -89,7 +87,6 @@ export default function ChatInput({
       }
     );
 
-    // 컴포넌트가 마운트된 후 초기 마운트 플래그 해제 (약간의 지연 후)
     const timer = setTimeout(() => {
       isInitialMountRef.current = false;
     }, 500);
@@ -108,6 +105,8 @@ export default function ChatInput({
         styles.container,
         {
           bottom: bottomAnim,
+          backgroundColor: colors.cardBackground,
+          borderTopColor: colors.border,
         },
         isKeyboardVisible && styles.containerWithKeyboard,
       ]}
@@ -115,20 +114,24 @@ export default function ChatInput({
       {exhibitionId ? (
         <Pressable onPress={onCameraPress} style={styles.iconButton}>
           {isPastExhibition ? (
-            <MaterialIcons name="image-search" size={24} color="#007AFF" />
+            <MaterialIcons name="image-search" size={24} color={colors.text} />
           ) : (
-            <MaterialIcons name="camera-alt" size={24} color="#007AFF" />
+            <MaterialIcons name="camera-alt" size={24} color={colors.text} />
           )}
         </Pressable>
       ) : (
         <View style={styles.iconButton}>
-          <MaterialIcons name="camera-alt" size={24} color="#ccc" />
+          <MaterialIcons name="camera-alt" size={24} color={colors.textSecondary} />
         </View>
       )}
 
       <TextInput
         style={[
           styles.input,
+          {
+            backgroundColor: colors.primaryLight,
+            color: colors.text,
+          },
           isKeyboardVisible && styles.inputWithKeyboard,
         ]}
         value={message}
@@ -136,7 +139,7 @@ export default function ChatInput({
         editable={!!exhibitionId && !isLoading}
         multiline={true}
         placeholder={placeholder}
-        placeholderTextColor="#999"
+        placeholderTextColor={colors.textSecondary}
         keyboardType="default"
         returnKeyType="default"
       />
@@ -152,8 +155,8 @@ export default function ChatInput({
         >
           <MaterialIcons
             name="send"
-            size={25}
-            color={message.trim() ? "#007AFF" : "#ccc"}
+            size={24}
+            color={message.trim() ? colors.text : colors.textSecondary}
           />
         </Pressable>
       ) : (
@@ -168,54 +171,56 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     right: 0,
+    bottom: 0,
     flexDirection: "row",
-    paddingHorizontal: 12,
-    paddingTop: 10,
-    paddingBottom: 10,
+    gap: 4,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 26,
     alignItems: "center",
-    backgroundColor: "#fff",
+    justifyContent: "flex-start",
+    borderTopWidth: 1,
     zIndex: 999,
   },
   containerWithKeyboard: {
-    borderTopWidth: 1,
-    borderTopColor: "#e5e5e5",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
     elevation: 5,
   },
   iconButton: {
-    padding: 8,
-  },
-  input: {
-    flex: 1,
-    marginHorizontal: 8,
-    backgroundColor: "#f5f5f5",
-    borderRadius: 20,
-    padding: 10,
-    fontSize: 16,
-  },
-  inputWithKeyboard: {
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    minHeight: 44,
-    maxHeight: 100,
-  },
-  sendButton: {
-    width: 36,
-    height: 36,
-    // borderRadius: 18,
-    // backgroundColor: "#007AFF",
+    padding: 0,
+    width: 40,
+    height: 40,
     alignItems: "center",
     justifyContent: "center",
   },
+  input: {
+    flex: 1,
+    marginHorizontal: 0,
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    fontSize: 15,
+    minHeight: 40,
+    maxHeight: 100,
+  },
+  inputWithKeyboard: {
+    paddingVertical: 12,
+  },
+  sendButton: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 0,
+  },
   sendButtonDisabled: {
-    // backgroundColor: "#f5f5f5",
+    opacity: 0.5,
   },
   sendButtonPlaceholder: {
-    width: 36,
-    height: 36,
+    width: 40,
+    height: 40,
   },
 });

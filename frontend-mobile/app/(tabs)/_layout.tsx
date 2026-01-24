@@ -5,12 +5,16 @@ import { View } from 'react-native';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import ExhibitionHeader from '@/components/ExhibitionHeader';
 import FloatingTabBar from '@/components/FloatingTabBar';
+
+// 무채색 테마
+const THEME = {
+  primary: "#1a1a1a",        // 다크 그레이/블랙
+  textSecondary: "#666",     // 보조 텍스트
+};
+
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
   const pathname = usePathname();
 
   // DEBUG: 로그로 pathname 변화를 추적합니다 (디버깅용, 릴리스 시 제거 가능)
@@ -20,9 +24,11 @@ export default function TabLayout() {
 
   // Memoize the header so its identity is stable across renders and
   // render it above the Tabs so it remains visible like a floating bar.
-  // Use createElement + `as any` to avoid strict JSX typing issues (same
-  // approach used previously when placing the header in screenOptions).
-  const CustomHeader = React.memo(() => React.createElement(ExhibitionHeader as any));
+  const CustomHeader = React.memo(
+    function CustomHeader() {
+      return React.createElement(ExhibitionHeader as any);
+    }
+  );
 
   // Hide ExhibitionHeader on mypage (but keep it mounted to prevent layout shift)
   const isMyPage = pathname?.includes('/mypage');
@@ -42,7 +48,8 @@ export default function TabLayout() {
 
       <Tabs
         screenOptions={{
-          tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+          tabBarActiveTintColor: THEME.primary,
+          tabBarInactiveTintColor: THEME.textSecondary,
           // Disable the Tabs built-in header to avoid duplicate headers.
           headerShown: false,
           tabBarButton: HapticTab,

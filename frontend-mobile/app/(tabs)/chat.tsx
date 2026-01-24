@@ -1,4 +1,4 @@
-import { Alert, Image, Platform, Pressable, ScrollView, Text, View, TouchableWithoutFeedback, Keyboard, ActivityIndicator  } from "react-native";
+import { Alert, Image, Platform, Pressable, ScrollView, Text, View, TouchableWithoutFeedback, Keyboard, ActivityIndicator, StyleSheet } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useMemo, useState } from "react";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -11,6 +11,7 @@ import ChatInput from '@/components/ChatInput';
 import { ChatDatabaseService } from '@/services/chathistory_service';
 import { fetchExhibitions, Exhibition } from "@/services/exhibition";
 import { fetchGalleries, Gallery } from "@/services/gallery";
+import { useTheme } from "@/components/ThemeProvider";
 
 const EMPTY_MESSAGES: Message[] = [];
 
@@ -33,6 +34,7 @@ export default function ChatScreen() {
   }, [params.artworkId, params.artworkImage]);
 
   /** ===== 전역 상태 ===== */
+  const { colors } = useTheme();
   const exhibitionId = useOnboardingStore((s) => s.exhibition);
   const galleryId = useOnboardingStore((s) => s.gallery);
   const age = useOnboardingStore((s) => s.age);
@@ -448,44 +450,42 @@ export default function ChatScreen() {
   };
 
   /** ===== UI ===== */
+  const dynamicStyles = {
+    container: { flex: 1, backgroundColor: colors.background },
+    sessionHeader: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.cardBackground },
+    sessionTitle: { fontSize: 14, fontWeight: "600", color: colors.text },
+    userBubble: { backgroundColor: colors.primaryLight },
+    botBubble: { backgroundColor: colors.cardBackground },
+    userText: { color: colors.text, fontSize: 15, lineHeight: 20 },
+    botText: { color: colors.text, fontSize: 15, lineHeight: 22 },
+    loadingBubble: { backgroundColor: colors.cardBackground, padding: 14, borderRadius: 16, flexDirection: "row", alignItems: "center", gap: 8 },
+    loadingText: { color: colors.textSecondary, fontSize: 14 },
+    emptyStateTitle: { fontSize: 18, fontWeight: "600", color: colors.text, marginTop: 16, textAlign: "center" },
+    emptyStateSubtitle: { fontSize: 14, color: colors.textSecondary, marginTop: 8, textAlign: "center", lineHeight: 20 },
+  };
+
   return (
-    <View style={{ flex: 1, backgroundColor: "#fff" }}>
+    <View style={dynamicStyles.container}>
         {/* 세션 제목 헤더 (로그인한 사용자만 표시) */}
         {isLoggedIn && exhibitionId && (
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              paddingHorizontal: 16,
-              paddingVertical: 12,
-              borderBottomWidth: 1,
-              borderBottomColor: "#e5e5e5",
-              backgroundColor: "#fff",
-            }}
-          >
+          <View style={dynamicStyles.sessionHeader}>
             <Pressable
               onPress={() => setShowSessions(true)}
-              style={{ padding: 4 }}
+              style={styles.sessionListButton}
             >
-              <MaterialIcons name="list" size={24} color="#007AFF" />
+              <MaterialIcons name="list" size={24} color={colors.text} />
             </Pressable>
-            <View style={{ flex: 1, alignItems: "center" }}>
-              <Text
-                style={{
-                  fontSize: 14,
-                  fontWeight: "600",
-                  color: "#333",
-                }}
-              >
+            <View style={styles.sessionTitleContainer}>
+              <Text style={dynamicStyles.sessionTitle}>
                 {sessionTitle || "새 세션"}
               </Text>
             </View>
-            <View style={{ width: 32 }} />
+            <View style={styles.sessionHeaderSpacer} />
           </View>
         )}
 
         {/* 채팅창을 입력창과 하단 탭바 위 영역으로만 제한 */}
-        <View style={{ flex: 1 }}>
+        <View style={styles.chatContainer}>
           {(currentArtworkId || messages.length > 0 || isLoading) ? (
             <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
               <ScrollView
@@ -493,12 +493,12 @@ export default function ChatScreen() {
                 contentContainerStyle={{ 
                   padding: 16, 
                   paddingBottom: keyboardHeight > 0 
-                    ? keyboardHeight + 64 // 키보드 높이 + 입력창 높이(약 64px)
-                    : 64 // 키보드 없을 때: 입력창 높이만 (marginBottom: 92가 플로팅 바를 이미 고려함)
+                    ? keyboardHeight + 64
+                    : 64
                 }}
                 style={{ 
                   flex: 1, 
-                  marginBottom: keyboardHeight > 0 ? 0 : 92 // 키보드 없을 때: 플로팅 바 높이(92px) 고려
+                  marginBottom: keyboardHeight > 0 ? 0 : 92
                 }}
                 keyboardShouldPersistTaps="handled"
                 onScrollBeginDrag={Keyboard.dismiss}
@@ -511,31 +511,29 @@ export default function ChatScreen() {
               return (
                 <View key={msg.id}>
                   {showImage && (
-                    <View style={{ marginBottom: 16 }}>
+                    <View style={styles.artworkImageContainer}>
                       <Image
                         source={{ uri: msg.artworkImage }}
-                        style={{ width: "50%", aspectRatio: 1, borderRadius: 12 }}
+                        style={styles.artworkImage}
                       />
-                      <Text style={{ marginTop: 8, fontWeight: "600" }}>
+                      <Text style={styles.artworkTitle}>
                         {msg.artworkTitle}
                       </Text>
                     </View>
                   )}
                   <View
-                    style={{
-                      alignItems: msg.isUser ? "flex-end" : "flex-start",
-                      marginBottom: 12,
-                    }}
+                    style={[
+                      styles.messageContainer,
+                      msg.isUser ? styles.userMessageContainer : styles.botMessageContainer
+                    ]}
                   >
                     <View
-                      style={{
-                        backgroundColor: msg.isUser ? "#007AFF" : "#f0f0f0",
-                        padding: 12,
-                        borderRadius: 16,
-                        maxWidth: "80%",
-                      }}
+                      style={[
+                        styles.messageBubble,
+                        msg.isUser ? dynamicStyles.userBubble : dynamicStyles.botBubble
+                      ]}
                     >
-                      <Text style={{ color: msg.isUser ? "#fff" : "#000" }}>
+                      <Text style={msg.isUser ? dynamicStyles.userText : dynamicStyles.botText}>
                         {msg.text}
                       </Text>
                     </View>
@@ -546,24 +544,10 @@ export default function ChatScreen() {
             
             {/* 로딩 메시지 */}
             {isLoading && (
-              <View
-                style={{
-                  alignItems: "flex-start",
-                  marginBottom: 12,
-                }}
-              >
-                <View
-                  style={{
-                    backgroundColor: "#f0f0f0",
-                    padding: 12,
-                    borderRadius: 16,
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 8,
-                  }}
-                >
-                  <ActivityIndicator size="small" color="#007AFF" />
-                  <Text style={{ color: "#666", fontSize: 14 }}>
+              <View style={styles.loadingContainer}>
+                <View style={dynamicStyles.loadingBubble}>
+                  <ActivityIndicator size="small" color={colors.primary} />
+                  <Text style={dynamicStyles.loadingText}>
                     답변 생성 중...
                   </Text>
                 </View>
@@ -572,28 +556,36 @@ export default function ChatScreen() {
           </ScrollView>
           </TouchableWithoutFeedback>
           ) : (
-            // When a gallery is selected but no exhibition is chosen, prompt user to
-            // select an exhibition and disable camera/chat inputs.
             !exhibitionId && galleryId ? (
-              <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-                <MaterialIcons name="event" size={48} color="#666" />
-                <Text style={{ marginTop: 12, fontSize: 16, fontWeight: "600" }}>전시를 선택해주세요</Text>
-                <Text style={{ marginTop: 8, color: "#666" }}>상단에서 전시를 선택하면 채팅과 카메라 기능을 사용할 수 있습니다.</Text>
+              <View style={styles.emptyState}>
+                <View style={styles.emptyStateIcon}>
+                  <MaterialIcons name="event" size={40} color={colors.textSecondary} />
+                </View>
+                <Text style={dynamicStyles.emptyStateTitle}>전시를 선택해주세요</Text>
+                <Text style={dynamicStyles.emptyStateSubtitle}>
+                  홈 탭에서 내가 감상하고자 하는 전시를 선택하면
+                  채팅과 카메라 기능을 사용할 수 있습니다
+                </Text>
               </View>
             ) : (
               <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-                  {isPastExhibition ? (
-                    <>
-                      <MaterialIcons name="image-search" size={48} color="#007AFF" />
-                      <Text style={{ marginTop: 12 }}>작품을 검색해주세요</Text>
-                    </>
-                  ) : (
-                    <>
-                  <MaterialIcons name="camera-alt" size={48} color="#007AFF" />
-                  <Text style={{ marginTop: 12 }}>작품을 촬영해주세요</Text>
-                    </>
-                  )}
+                <View style={styles.emptyState}>
+                  <View style={styles.emptyStateIcon}>
+                    {isPastExhibition ? (
+                      <MaterialIcons name="image-search" size={40} color={colors.text} />
+                    ) : (
+                      <MaterialIcons name="camera-alt" size={40} color={colors.text} />
+                    )}
+                  </View>
+                  <Text style={dynamicStyles.emptyStateTitle}>
+                    {isPastExhibition ? "작품을 검색해주세요" : "작품을 촬영해주세요"}
+                  </Text>
+                  <Text style={dynamicStyles.emptyStateSubtitle}>
+                    {isPastExhibition 
+                      ? "아래 검색 버튼을 눌러\n작품을 선택하고 대화를 시작하세요"
+                      : "아래 카메라 버튼을 눌러\n작품을 촬영하고 대화를 시작하세요"
+                    }
+                  </Text>
                 </View>
               </TouchableWithoutFeedback>
             )
@@ -618,44 +610,25 @@ export default function ChatScreen() {
           }
         />
         <SessionListModal
-          // Only allow the modal to be visible when logged in and an exhibition is selected.
           visible={showSessions && !!exhibitionId && isLoggedIn}
           exhibitionId={exhibitionId}
           onClose={() => setShowSessions(false)}
           onDelete={async (deletedSessionId) => {
-            // 현재 활성 세션을 삭제한 경우 로컬 기록 초기화 및 새 세션 생성
             if (currentSessionId === deletedSessionId && exhibitionId) {
               console.log('[ChatScreen] 현재 활성 세션 삭제됨, 로컬 기록 초기화 및 새 세션 생성');
-              
-              // 로컬 대화 기록 초기화
               clearChatHistory(exhibitionId);
-              
-              // 세션 ID 초기화
               useChatStore.getState().setCurrentSessionId(null);
-              
-              // 세션 제목 초기화
               setSessionTitle(null);
             }
           }}
           onSelectSession={async (sessionId) => {
             try {
               if (!exhibitionId) return;
-              
-              // 로그인 사용자: 기존 세션 선택 시 로컬 세션 저장 → 초기화 → 선택한 세션 로드
-              // 1. 먼저 세션 ID를 변경하면 ExhibitionHeader가 현재 세션의 메시지를 저장함
-              // (메시지가 교체되기 전에 저장되도록)
               const prevSessionId = useChatStore.getState().currentSessionId;
               useChatStore.getState().setCurrentSessionId(sessionId);
-              
-              // 2. ExhibitionHeader가 저장하는 시간을 주기 위해 약간의 지연
               await new Promise(resolve => setTimeout(resolve, 200));
-              
-              // 3. DB에서 선택한 세션의 메시지 불러오기
               const rows = await ChatDatabaseService.loadSessionMessages(sessionId);
-              
-              // 4. 로컬 대화 기록에 불러온 메시지 설정 (ExhibitionHeader에서 이미 clearAllChatHistories 호출됨)
               setChatHistory(exhibitionId, rows);
-              
               setShowSessions(false);
               const sessionInfo = await ChatDatabaseService.getSessionInfo(sessionId);
               if (sessionInfo) {
@@ -668,17 +641,9 @@ export default function ChatScreen() {
           }}
           onCreateNew={async (sessionId) => {
             if (!exhibitionId) return;
-            
-            // 로그인 사용자: 세션 변경 시 로컬 세션 저장 → 초기화 → 새 세션 생성
-            // 1. 먼저 세션 ID를 변경하면 ExhibitionHeader가 현재 세션의 메시지를 저장함
-            // (메시지가 클리어되기 전에 저장되도록)
             const prevSessionId = useChatStore.getState().currentSessionId;
             useChatStore.getState().setCurrentSessionId(sessionId);
-            
-            // 2. ExhibitionHeader가 저장하는 시간을 주기 위해 약간의 지연
             await new Promise(resolve => setTimeout(resolve, 200));
-            
-            // 3. 로컬 대화 기록 초기화 (ExhibitionHeader에서 이미 clearAllChatHistories 호출됨)
             setChatHistory(exhibitionId, []);
             setShowSessions(false);
             setSessionTitle(null);
@@ -687,3 +652,92 @@ export default function ChatScreen() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  sessionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  sessionListButton: {
+    padding: 4,
+  },
+  sessionTitleContainer: {
+    flex: 1,
+    alignItems: "center",
+  },
+  sessionHeaderSpacer: {
+    width: 32,
+  },
+  chatContainer: {
+    flex: 1,
+  },
+  artworkImageContainer: {
+    marginBottom: 16,
+  },
+  artworkImage: {
+    width: "50%",
+    aspectRatio: 1,
+    borderRadius: 12,
+  },
+  artworkTitle: {
+    marginTop: 8,
+    fontWeight: "600",
+    color: "#1a1a1a",
+    fontSize: 15,
+  },
+  messageContainer: {
+    marginBottom: 12,
+  },
+  userMessageContainer: {
+    alignItems: "flex-end",
+  },
+  botMessageContainer: {
+    alignItems: "flex-start",
+  },
+  messageBubble: {
+    padding: 14,
+    borderRadius: 16,
+    maxWidth: "80%",
+  },
+  loadingContainer: {
+    alignItems: "flex-start",
+    marginBottom: 12,
+  },
+  emptyState: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 92, // FloatingTabBar + ChatInput 높이
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 40,
+  },
+  emptyStateIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#f5f5f5",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 20,
+  },
+  emptyStateTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#1a1a1a",
+    textAlign: "center",
+    marginBottom: 16,
+    letterSpacing: -0.3,
+  },
+  emptyStateSubtitle: {
+    fontSize: 15,
+    color: "#666",
+    textAlign: "center",
+    lineHeight: 22,
+    maxWidth: 280,
+  },
+});

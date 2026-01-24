@@ -4,6 +4,13 @@ import { Message } from "@/store/chat.store";
 // Cached flag whether the `chat_messages.image_url` column exists in the DB.
 let hasImageUrlColumn: boolean | null = null;
 
+// 🔒 중복 저장 방지를 위한 실행 중인 저장 작업 추적
+const savingOperations = new Map<string, Promise<number | null>>();
+
+function getSaveKey(userId: string, exhibitionId: number, sessionId: number | null): string {
+  return `${userId}-${exhibitionId}-${sessionId ?? 'new'}`;
+}
+
 async function ensureImageUrlColumn(): Promise<boolean> {
   if (hasImageUrlColumn !== null) return hasImageUrlColumn;
   // Probe the column by selecting it; if it doesn't exist the request will
@@ -38,6 +45,36 @@ export const ChatDatabaseService = {
   ) {
     if (messages.length === 0) return null;
 
+    // 🔒 중복 실행 방지: 같은 저장 작업이 이미 진행 중이면 대기
+    const saveKey = getSaveKey(userId, exhibitionId, sessionId);
+    if (savingOperations.has(saveKey)) {
+      console.log('[ChatDatabaseService] 🔒 중복 저장 방지 - 이미 진행 중인 저장 작업 대기:', saveKey);
+      return await savingOperations.get(saveKey)!;
+    }
+
+    // 저장 작업 시작
+    const savePromise = (async () => {
+      try {
+        return await this._saveFullHistoryInternal(userId, exhibitionId, messages, exhibitionName, sessionId, ageGroup, expertiseLevel);
+      } finally {
+        // 저장 완료 후 맵에서 제거
+        savingOperations.delete(saveKey);
+      }
+    })();
+
+    savingOperations.set(saveKey, savePromise);
+    return await savePromise;
+  },
+
+  async _saveFullHistoryInternal(
+    userId: string, 
+    exhibitionId: number, 
+    messages: Message[], 
+    exhibitionName: string,
+    sessionId?: number | null,
+    ageGroup?: string | null, 
+    expertiseLevel?: string | null
+  ): Promise<number | null> {
     let activeSessionId = sessionId;
 
     // 1. 세션 ID가 없는 경우에만 새로 생성 (3개 제한 체크 포함)
@@ -54,29 +91,49 @@ export const ChatDatabaseService = {
       const existingSessions = await this.listSessions(userId, exhibitionId);
       console.log('[ChatDatabaseService] 🔵 saveFullHistory 기존 세션 개수:', existingSessions.length, existingSessions.map(s => ({ id: s.id, title: s.title, created_at: s.created_at })));
       
-      if (existingSessions.length >= 3) {
-        console.error('[ChatDatabaseService] ❌ saveFullHistory 세션 개수 제한 초과:', existingSessions.length);
-        throw new Error('전시당 최대 3개의 세션만 생성할 수 있습니다. 기존 세션을 삭제한 후 새로 생성해주세요.');
-      }
-
-      const { data: history, error: historyError } = await supabase
-        .from('chat_history')
-        .insert({ user_id: userId, exhibition_id: exhibitionId, title: exhibitionName })
-        .select()
-        .single();
-
-      if (historyError) {
-        console.error('[ChatDatabaseService] ❌ saveFullHistory 세션 생성 DB 오류:', historyError);
-        throw historyError;
+      // 🔒 중복 세션 생성 방지: 최근에 생성된 세션이 있고 메시지가 없는 경우 재사용
+      if (existingSessions.length > 0) {
+        const mostRecentSession = existingSessions[0]; // 가장 최근 세션
+        const { data: sessionMessages } = await supabase
+          .from('chat_messages')
+          .select('id')
+          .eq('session_id', mostRecentSession.id)
+          .limit(1);
+        
+        // 최근 세션이 있고 메시지가 없으면 재사용 (중복 생성 방지)
+        if (!sessionMessages || sessionMessages.length === 0) {
+          console.log('[ChatDatabaseService] 🔵 최근 세션 재사용 (메시지 없음):', {
+            sessionId: mostRecentSession.id,
+            title: mostRecentSession.title
+          });
+          activeSessionId = mostRecentSession.id;
+        } else if (existingSessions.length >= 3) {
+          console.error('[ChatDatabaseService] ❌ saveFullHistory 세션 개수 제한 초과:', existingSessions.length);
+          throw new Error('전시당 최대 3개의 세션만 생성할 수 있습니다. 기존 세션을 삭제한 후 새로 생성해주세요.');
+        }
       }
       
-      activeSessionId = history.id;
-      console.log('[ChatDatabaseService] ✅ saveFullHistory에서 세션 자동 생성 완료:', {
-        sessionId: activeSessionId,
-        title: exhibitionName,
-        userId,
-        exhibitionId
-      });
+      // 여전히 세션이 없으면 새로 생성
+      if (!activeSessionId) {
+        const { data: history, error: historyError } = await supabase
+          .from('chat_history')
+          .insert({ user_id: userId, exhibition_id: exhibitionId, title: exhibitionName })
+          .select()
+          .single();
+
+        if (historyError) {
+          console.error('[ChatDatabaseService] ❌ saveFullHistory 세션 생성 DB 오류:', historyError);
+          throw historyError;
+        }
+        
+        activeSessionId = history.id;
+        console.log('[ChatDatabaseService] ✅ saveFullHistory에서 세션 자동 생성 완료:', {
+          sessionId: activeSessionId,
+          title: exhibitionName,
+          userId,
+          exhibitionId
+        });
+      }
     }
 
     // 2. 해당 세션의 기존 메시지 확인 (중복 방지)
@@ -88,17 +145,29 @@ export const ChatDatabaseService = {
 
     let newMessages = messages;
     if (existingMessages && existingMessages.length > 0) {
-      // DB에 저장된 메시지 수와 전달받은 메시지 수 비교
-      // 전체 메시지가 이미 저장되어 있는지 확인
+      // 🔒 강화된 중복 체크: 모든 메시지가 이미 저장되어 있는지 확인
       if (existingMessages.length >= messages.length) {
-        // DB 메시지와 전달받은 메시지의 마지막 부분이 일치하는지 확인
-        const dbLastMsg = existingMessages[existingMessages.length - 1];
-        const inputLastMsg = messages[messages.length - 1];
+        // DB 메시지와 입력 메시지를 순서대로 비교
+        let allMatch = true;
+        for (let i = 0; i < messages.length; i++) {
+          const dbMsg = existingMessages[i];
+          const inputMsg = messages[i];
+          
+          if (!dbMsg || 
+              dbMsg.content !== inputMsg.text || 
+              dbMsg.role !== (inputMsg.isUser ? 'user' : 'assistant')) {
+            allMatch = false;
+            break;
+          }
+        }
         
-        if (dbLastMsg.content === inputLastMsg.text && 
-            dbLastMsg.role === (inputLastMsg.isUser ? 'user' : 'assistant')) {
-          // 전체 메시지가 이미 저장되어 있음
-          console.log('[ChatDatabaseService] 🔵 모든 메시지가 이미 저장되어 있음, 중복 저장 방지');
+        if (allMatch) {
+          // 모든 메시지가 이미 저장되어 있음
+          console.log('[ChatDatabaseService] 🔵 모든 메시지가 이미 저장되어 있음, 중복 저장 방지', {
+            sessionId: activeSessionId,
+            existingCount: existingMessages.length,
+            inputCount: messages.length
+          });
           return activeSessionId;
         }
       }
@@ -111,6 +180,11 @@ export const ChatDatabaseService = {
       );
       if (lastIndex !== -1) {
         newMessages = messages.slice(lastIndex + 1);
+        console.log('[ChatDatabaseService] 🔵 기존 메시지 필터링:', {
+          originalCount: messages.length,
+          newCount: newMessages.length,
+          lastIndex
+        });
       }
     }
 
@@ -120,6 +194,32 @@ export const ChatDatabaseService = {
     }
 
     // 4. 새 메시지 저장 로직 (기존과 동일하되 activeSessionId 사용)
+    // 🔒 추가 중복 체크: 저장 직전에 다시 확인
+    if (newMessages.length > 0) {
+      const { data: lastCheck } = await supabase
+        .from('chat_messages')
+        .select('content, role')
+        .eq('session_id', activeSessionId)
+        .order('created_at', { ascending: false })
+        .limit(newMessages.length);
+      
+      // 마지막 저장된 메시지들과 새로 저장할 메시지들 비교
+      if (lastCheck && lastCheck.length > 0) {
+        const lastCheckMsg = lastCheck[0];
+        const firstNewMsg = newMessages[0];
+        
+        // 첫 번째 새 메시지가 이미 마지막에 저장되어 있으면 중복 저장 방지
+        if (lastCheckMsg.content === firstNewMsg.text && 
+            lastCheckMsg.role === (firstNewMsg.isUser ? 'user' : 'assistant')) {
+          console.log('[ChatDatabaseService] 🔒 저장 직전 중복 감지, 저장 취소:', {
+            sessionId: activeSessionId,
+            duplicateMessage: firstNewMsg.text.substring(0, 50)
+          });
+          return activeSessionId;
+        }
+      }
+    }
+
     const includeImage = await ensureImageUrlColumn();
     const messagesToInsert = newMessages.map((m) => ({
       session_id: activeSessionId,
@@ -132,8 +232,22 @@ export const ChatDatabaseService = {
       image_url: m.artworkImage || null,
     }));
 
+    console.log('[ChatDatabaseService] 💾 메시지 저장 시작:', {
+      sessionId: activeSessionId,
+      messageCount: messagesToInsert.length,
+      messages: messagesToInsert.map(m => ({ content: m.content.substring(0, 30) + '...', role: m.role }))
+    });
+
     const { error: msgError } = await supabase.from('chat_messages').insert(messagesToInsert);
-    if (msgError) throw msgError;
+    if (msgError) {
+      console.error('[ChatDatabaseService] ❌ 메시지 저장 실패:', msgError);
+      throw msgError;
+    }
+    
+    console.log('[ChatDatabaseService] ✅ 메시지 저장 완료:', {
+      sessionId: activeSessionId,
+      savedCount: messagesToInsert.length
+    });
 
     return activeSessionId; // 생성되거나 사용된 ID 반환
   },
