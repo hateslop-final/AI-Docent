@@ -4,7 +4,7 @@
     "slug": "ai-docent",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/logo.svg",
+    "icon": "./assets/icon.png",
     "scheme": "aidocent",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -15,12 +15,12 @@
       "infoPlist": {
         "NSCameraUsageDescription": "작품을 검색하기 위해 카메라 접근 권한이 필요합니다",
         "NSPhotoLibraryUsageDescription": "프로필 사진을 설정하기 위해 사진 라이브러리 접근 권한이 필요합니다",
-
         "NSUserNotificationsUsageDescription": "알림을 받기 위해 알림 권한이 필요합니다",
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true,
           "NSAllowsArbitraryLoadsInWebContent": true
-        }
+        },
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -34,11 +34,13 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.ai-docent.app",
       "permissions": [
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE",
-        "RECEIVE_BOOT_COMPLETED",
-        "VIBRATE"
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
@@ -47,18 +49,6 @@
     },
     "plugins": [
       "expo-router",
-      [
-        "expo-splash-screen",
-        {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
-          "dark": {
-            "backgroundColor": "#000000"
-          }
-        }
-      ],
       [
         "expo-camera",
         {

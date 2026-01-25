@@ -368,7 +368,16 @@ export default function ExhibitionHeader() {
     if (!hasHistoryNow) {
       // 기록이 없으면 DB 저장 없이 로컬만 초기화
       console.log('[ExhibitionHeader] 🔵 기록 없음 - 로컬만 초기화 (DB 세션 생성/저장 안 함)');
-      useChatStore.getState().setCurrentSessionId(null);
+      
+      // 🔥 비로그인 사용자는 전시 변경 시 항상 모든 로컬 세션 초기화
+      if (!user) {
+        console.log('[ExhibitionHeader] 🔥 비로그인 사용자 - 전시 변경 시 모든 로컬 세션 초기화');
+        useChatStore.getState().clearAllChatHistories();
+        useChatStore.getState().setCurrentSessionId(null);
+      } else {
+        // 로그인 사용자는 세션 ID만 초기화
+        useChatStore.getState().setCurrentSessionId(null);
+      }
 
       // 🔍 새 전시에 기존 세션이 있는지 확인 후 모달 오픈
       if (user && currentId !== undefined) {
