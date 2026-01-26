@@ -43,8 +43,9 @@ export default function ProfileScreen() {
   useEffect(() => {
     if (userProfile) {
       setNickname(userProfile.nickname || "");
-      setSelectedAge(userProfile.age_range || null);
-      setSelectedAesthetic(userProfile.aesthetic_level || null);
+      // DB에 값이 있으면 사용, 없으면 온보딩 스토어 값 사용
+      setSelectedAge(userProfile.age_range || age || null);
+      setSelectedAesthetic(userProfile.aesthetic_level || aesthetic || null);
       
       // userProfile에서 이미지 URL 가져오기 (캐시 무효화)
       const profileImgUrl = userProfile.user_profile_img_url;
@@ -58,7 +59,7 @@ export default function ProfileScreen() {
         setHasCustomImage(false);
       }
     } else {
-      // userProfile이 없을 때는 기본값 설정
+      // userProfile이 없을 때는 온보딩 스토어 값 사용
       setNickname("");
       setSelectedAge(age || null);
       setSelectedAesthetic(aesthetic || null);

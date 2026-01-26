@@ -6,6 +6,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { signUp } from "@/services/auth";
 import { useAuth } from "@/store/auth.store";
 import { useOnboardingStore } from "@/store/onboarding.store";
+import { KeyboardAvoidingView, Platform } from "react-native";
 
 export default function SignUpScreen() {
   const router = useRouter();
@@ -114,11 +115,17 @@ export default function SignUpScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }} edges={["top"]}>
-      <ScrollView 
-        style={{ flex: 1 }} 
-        contentContainerStyle={{ padding: 24, paddingBottom: 40 }}
-        keyboardShouldPersistTaps="handled"
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 0}
       >
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ padding: 24, paddingBottom: 40 }}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
         {/* 헤더 */}
         <Pressable
           onPress={() => router.back()}
@@ -298,6 +305,7 @@ export default function SignUpScreen() {
           </Text>
         </Pressable>
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

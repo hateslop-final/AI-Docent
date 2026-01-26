@@ -6,6 +6,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { signIn } from "@/services/auth";
 import { useAuth, useAuthState, useAuth as authStore } from "@/store/auth.store";
 import { GoogleLoginButton } from "@/components/GoogleLoginButton";
+import { AppleLoginButton } from "@/components/AppleLoginButton";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -131,9 +132,10 @@ export default function LoginScreen() {
           <View style={styles.dividerLine} />
         </View>
 
-        {/* 구글 로그인 버튼 */}
+        {/* 소셜 로그인 버튼 */}
         <View style={styles.googleButtonContainer}>
           <GoogleLoginButton />
+          <AppleLoginButton />
         </View>
 
         {/* 회원가입 링크 */}

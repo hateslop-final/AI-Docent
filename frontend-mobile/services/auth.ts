@@ -1,5 +1,6 @@
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { supabase } from './supabase';
 import { API_BASE } from './api';
 import { DEFAULT_PROFILE_IMAGE_URL } from './storage';
@@ -211,6 +212,35 @@ export async function signInWithGoogle() {
     }
   }
   
+  return data;
+}
+
+export async function signInWithApple() {
+  const credential = await AppleAuthentication.signInAsync({
+    requestedScopes: [
+      AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+      AppleAuthentication.AppleAuthenticationScope.EMAIL,
+    ],
+  });
+
+  if (!credential.identityToken) {
+    throw new Error('Apple 인증 토큰을 받을 수 없습니다.');
+  }
+
+  // TestFlight/프로덕션 환경: Bundle ID는 com.ai-docent.app
+  // Supabase Dashboard → Apple Provider → Authorized Client IDs에 추가:
+  // - com.ai-docent.app
+  const { data, error } = await supabase.auth.signInWithIdToken({
+    provider: 'apple',
+    token: credential.identityToken,
+    // nonce는 credential에서 제공되면 사용
+    ...(credential.nonce && { nonce: credential.nonce }),
+  });
+
+  if (error) {
+    throw error;
+  }
+
   return data;
 }
 
