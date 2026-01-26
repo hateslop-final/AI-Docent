@@ -11,7 +11,7 @@ CURAT은 사용자 맞춤형 전시 안내를 제공하는 모바일 앱입니�
 - 🤖 **AI 도슨트 채팅**: OpenAI 기반 맞춤형 작품 설명
 - 📸 **이미지 검색**: CLIP 모델 기반 유사 작품 검색
 - 🏛️ **전시 관리**: 현재/과거 전시 조회 및 상세 정보
-- 👤 **사용자 인증**: Supabase Auth 기반 로그인/회원가입
+- 👤 **사용자 인증**: Supabase Auth 기반 로그인/회원가입 (이메일, Google, Apple)
 - 💬 **채팅 히스토리**: 전시별 최대 3개 세션 자동 저장 및 관리
 - 🌙 **다크모드**: 시스템 설정 기반 자동 다크모드 지원
 - 📱 **관리자 페이지**: 갤러리/전시/작품 관리 웹 인터페이스
@@ -90,6 +90,7 @@ AI-Docent/
 │   │   ├── ExhibitionHeader.tsx  # 전시 헤더 (갤러리/전시 선택)
 │   │   ├── FloatingTabBar.tsx    # 플로팅 탭바
 │   │   ├── GoogleLoginButton.tsx # Google 로그인 버튼
+│   │   ├── AppleLoginButton.tsx  # Apple 로그인 버튼 (iOS 전용)
 │   │   ├── SessionListModal.tsx  # 세션 목록 모달
 │   │   ├── ThemeProvider.tsx     # 다크모드 테마 제공자
 │   │   ├── haptic-tab.tsx         # 햅틱 피드백 탭
@@ -156,6 +157,8 @@ AI-Docent/
 │
 ├── docker-compose.dev.yml         # Docker Compose 개발 환경 설정
 ├── EXECUTION_FLOW.md              # 채팅 세션 저장 흐름 문서
+├── APPLE_LOGIN_SETUP.md           # Apple 로그인 설정 가이드
+├── APPLE_LOGIN_TROUBLESHOOTING.md # Apple 로그인 문제 해결 가이드
 └── README.md                      # 이 파일
 ```
 
@@ -321,7 +324,25 @@ CREATE TABLE "chat_messages" (
 1. Supabase Dashboard → Authentication
 2. Email 인증 활성화
 3. Google OAuth 설정 (선택사항)
-4. 관리자 계정 생성 (관리자 페이지 로그인용)
+4. Apple OAuth 설정 (선택사항, iOS 전용)
+5. 관리자 계정 생성 (관리자 페이지 로그인용)
+
+**Apple 로그인 설정 (iOS 전용):**
+자세한 설정 방법은 `APPLE_LOGIN_SETUP.md` 참고
+
+1. **Apple Developer Portal 설정**
+   - App ID 생성 (`com.ai-docent.app`)
+   - Service ID 생성 및 Return URL 설정
+   - Key 파일 생성 및 다운로드
+
+2. **Supabase Dashboard 설정**
+   - Authentication → Providers → Apple 활성화
+   - Service ID, Key ID, Team ID, Secret Key 입력
+   - Authorized Client IDs: `com.ai-docent.app` (TestFlight/프로덕션)
+
+3. **앱 코드**
+   - `expo-apple-authentication` 패키지 사용
+   - iOS에서만 표시 (`Platform.OS === 'ios'`)
 
 ### 2. 백엔드 설정
 
@@ -492,6 +513,11 @@ npm run dev
 - **채팅** (`chat.tsx`): AI 도슨트와 대화
 - **마이페이지** (`mypage.tsx`): 프로필, 설정, 로그인
 
+#### 소셜 로그인
+- **Google 로그인**: 모든 플랫폼 지원
+- **Apple 로그인**: iOS 전용 (expo-apple-authentication 사용)
+- 소셜 로그인 후 프로필 설정 화면에서 온보딩 데이터(연령대, 설명 수준) 자동 로드
+
 #### 채팅 기능
 - **세션 관리**: 전시별 최대 3개 세션
 - **자동 저장**: 전시 변경 시 이전 세션 자동 저장
@@ -552,6 +578,7 @@ npm run dev
 - **expo-camera** ~17.0.10 - 카메라 기능
 - **expo-image-picker** 17.0.10 - 이미지 선택
 - **expo-notifications** 0.32.16 - 푸시 알림
+- **expo-apple-authentication** - Apple 로그인 (iOS 전용)
 - **expo-linear-gradient** 15.0.8 - 그라디언트
 - **react-native-svg** 15.15.1 - SVG 렌더링
 - **@expo/vector-icons** 15.0.3 - 아이콘
@@ -694,9 +721,17 @@ const response = await fetch(`${API_BASE}/chatbot/`, {
 로그인 없이도 앱 사용 가능. 마이페이지에서만 로그인 기능 제공:
 
 ```typescript
-// 로그인
+// 이메일/비밀번호 로그인
 import { signIn } from "@/services/auth";
 await signIn(email, password);
+
+// Google 로그인
+import { signInWithGoogle } from "@/services/auth";
+await signInWithGoogle();
+
+// Apple 로그인 (iOS 전용)
+import { signInWithApple } from "@/services/auth";
+await signInWithApple();
 
 // 현재 사용자 확인
 import { getCurrentUser } from "@/services/auth";
@@ -706,6 +741,11 @@ const user = await getCurrentUser();
 import { signOut } from "@/services/auth";
 await signOut();
 ```
+
+**소셜 로그인:**
+- **Google**: 모든 플랫폼 지원
+- **Apple**: iOS 전용 (expo-apple-authentication 사용)
+- 소셜 로그인 후 프로필 설정 화면에서 온보딩 데이터(연령대, 설명 수준) 자동 로드
 
 ### 채팅 세션 관리
 
@@ -861,7 +901,10 @@ docker run -p 8000:8000 --env-file .env ai-docent-backend
 - `app/(tabs)/chat.tsx`: AI 채팅 화면, 메시지 관리, 세션 처리
 - `app/(tabs)/index.tsx`: 홈 화면, 전시 카드 목록
 - `components/ExhibitionHeader.tsx`: 전시 헤더, 세션 자동 저장 로직
+- `components/GoogleLoginButton.tsx`: Google 로그인 버튼
+- `components/AppleLoginButton.tsx`: Apple 로그인 버튼 (iOS 전용)
 - `components/ThemeProvider.tsx`: 다크모드 테마 제공자
+- `services/auth.ts`: 인증 서비스 (이메일, Google, Apple 로그인)
 - `services/chathistory_service.ts`: 채팅 히스토리 DB 관리
 - `store/chat.store.ts`: 채팅 상태 관리 (Zustand)
 - `store/settings.store.ts`: 설정 상태 관리 (다크모드, 알림)
@@ -901,6 +944,13 @@ docker run -p 8000:8000 --env-file .env ai-docent-backend
 - 아이콘 파일이 1024x1024 PNG 형식인지 확인
 - `app.json`의 `icon` 경로 확인
 - 빌드 후 캐시 클리어
+
+**Apple 로그인 오류:**
+- "Unacceptable audience in id_token": Supabase Dashboard → Apple Provider → Authorized Client IDs에 `com.ai-docent.app` 추가 확인
+- "Invalid client": Service ID가 올바른지 확인
+- "Invalid redirect URI": Apple Developer Portal의 Return URLs 확인
+- iOS에서만 작동: Android에서는 표시되지 않음 (정상 동작)
+- 자세한 내용은 `APPLE_LOGIN_SETUP.md` 및 `APPLE_LOGIN_TROUBLESHOOTING.md` 참고
 
 ### 백엔드
 
