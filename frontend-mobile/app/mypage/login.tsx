@@ -81,7 +81,7 @@ export default function LoginScreen() {
         {/* 제목 */}
         <Text style={styles.title}>로그인</Text>
         <Text style={styles.subtitle}>
-          AI 도슨트에 오신 것을 환영합니다
+          CURAT에 오신 것을 환영합니다
         </Text>
 
         {/* 입력 폼 */}

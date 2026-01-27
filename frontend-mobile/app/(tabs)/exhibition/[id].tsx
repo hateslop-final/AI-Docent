@@ -184,7 +184,7 @@ export default function ExhibitionDetailPage() {
                 style={[styles.chatButton, { backgroundColor: colors.primary }]}
               >
                 <MaterialIcons name="chat-bubble" size={24} color={colors.primary === "#1a1a1a" ? "#ffffff" : "#1a1a1a"} />
-                <Text style={[styles.chatButtonText, { color: colors.primary === "#1a1a1a" ? "#ffffff" : "#1a1a1a" }]}>AI 도슨트와 채팅하기</Text>
+                <Text style={[styles.chatButtonText, { color: colors.primary === "#1a1a1a" ? "#ffffff" : "#1a1a1a" }]}>CURAT과 채팅하기</Text>
                 <MaterialIcons name="arrow-forward" size={20} color={colors.primary === "#1a1a1a" ? "#ffffff" : "#1a1a1a"} />
               </TouchableOpacity>
 
