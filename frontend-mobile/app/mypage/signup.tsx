@@ -145,7 +145,7 @@ export default function SignUpScreen() {
           회원가입
         </Text>
         <Text style={{ fontSize: 16, color: "#666", marginBottom: 32 }}>
-          AI 도슨트 계정을 만들어보세요
+          CURAT 계정을 만들어보세요
         </Text>
 
         {/* 입력 폼 */}
